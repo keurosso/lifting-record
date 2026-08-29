@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>リフティング記録 v1.7</title>
+  <title>リフティング記録 v2.0</title>
   <style>
     /* 全体・サッカーフィールド背景 */
     :root {
@@ -12,7 +12,6 @@
       --pitch-line: rgba(255, 255, 255, 0.4);
       --card-bg: rgba(255, 255, 255, 0.95);
       --accent-yellow: #fbc02d;
-      --accent-yellow-hover: #f57f17;
       --text-main: #1b4332;
     }
 
@@ -71,7 +70,6 @@
       align-items: center;
       justify-content: center;
       gap: 4px;
-      transition: background 0.2s;
     }
 
     .tab-btn.active {
@@ -104,10 +102,6 @@
       text-align: center;
       margin-bottom: 12px;
       color: var(--pitch-dark);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
     }
 
     /* 今日の集計グリッド */
@@ -157,7 +151,6 @@
       text-align: right;
       margin-bottom: 12px;
       border: 2px solid #333;
-      box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
     }
 
     .display-value {
@@ -188,15 +181,7 @@
       color: #333;
       padding: 14px 0;
       cursor: pointer;
-      text-align: center;
-      transition: active 0.1s;
       touch-action: manipulation;
-    }
-
-    .key-btn:active {
-      transform: translateY(2px);
-      border-bottom-width: 2px;
-      background: #eee;
     }
 
     .key-btn.action {
@@ -206,7 +191,7 @@
       color: #e65100;
     }
 
-    /* モード2: リフティングイラストタップ入力 */
+    /* モード2: 画像タップ入力エリア */
     .tap-counter-container {
       display: flex;
       flex-direction: column;
@@ -217,70 +202,37 @@
 
     .boy-tap-btn {
       position: relative;
-      width: 200px;
-      height: 190px;
-      background: linear-gradient(180deg, #e0f2fe 0%, #bae6fd 60%, #a7f3d0 60%, #6ee7b7 100%);
-      border: 3px solid #0288d1;
+      width: 220px;
+      height: 220px;
       border-radius: 20px;
-      display: flex;
-      justify-content: center;
-      align-items: flex-end;
       cursor: pointer;
       overflow: hidden;
       touch-action: manipulation;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+      border: 3px solid #81c784;
+    }
+
+    .boy-tap-btn img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
     }
 
     .tap-hint-text {
       position: absolute;
       top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
       font-size: 11px;
-      color: #0288d1;
+      color: #2e7d32;
       font-weight: bold;
       background: rgba(255,255,255,0.9);
-      padding: 2px 10px;
-      border-radius: 10px;
+      padding: 3px 10px;
+      border-radius: 12px;
       pointer-events: none;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-
-    /* SVGアニメーション設定 */
-    .boy-svg {
-      width: 170px;
-      height: 160px;
-      pointer-events: none;
-    }
-
-    /* 動かすパーツの基点設定 */
-    #right-leg {
-      transform-origin: 80px 100px;
-      transition: transform 0.05s ease-out;
-    }
-
-    #ball-group {
-      transform-origin: 50px 70px;
-      transition: transform 0.05s ease-out;
-    }
-
-    /* タップ時のキックアニメーション */
-    .boy-tap-btn.kicking #right-leg {
-      animation: kickLegIllustration 0.22s ease-out;
-    }
-
-    .boy-tap-btn.kicking #ball-group {
-      animation: bounceBallIllustration 0.22s ease-out;
-    }
-
-    @keyframes kickLegIllustration {
-      0% { transform: rotate(0deg); }
-      40% { transform: rotate(-28deg); }
-      100% { transform: rotate(0deg); }
-    }
-
-    @keyframes bounceBallIllustration {
-      0% { transform: translateY(0) scale(1); }
-      40% { transform: translateY(-35deg) scale(1.08); }
-      100% { transform: translateY(0) scale(1); }
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      white-space: nowrap;
     }
 
     .counter-sub-actions {
@@ -289,33 +241,29 @@
       width: 100%;
     }
 
-    .btn-count-down {
+    .btn-count-down, .btn-count-reset {
       flex: 1;
       padding: 10px;
-      background: #fff3e0;
-      border: 1px solid #ffe0b2;
       border-radius: 8px;
-      color: #e65100;
       font-size: 13px;
       font-weight: bold;
       cursor: pointer;
       touch-action: manipulation;
+    }
+
+    .btn-count-down {
+      background: #fff3e0;
+      border: 1px solid #ffe0b2;
+      color: #e65100;
     }
 
     .btn-count-reset {
-      flex: 1;
-      padding: 10px;
       background: #f5f5f5;
       border: 1px solid #e0e0e0;
-      border-radius: 8px;
       color: #666;
-      font-size: 13px;
-      font-weight: bold;
-      cursor: pointer;
-      touch-action: manipulation;
     }
 
-    /* 記録追加・汎用ボタン */
+    /* ボタン */
     .btn-submit {
       width: 100%;
       background: var(--accent-yellow);
@@ -327,7 +275,6 @@
       font-weight: bold;
       padding: 16px;
       cursor: pointer;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
       touch-action: manipulation;
       display: flex;
       align-items: center;
@@ -336,12 +283,6 @@
       margin-bottom: 8px;
     }
 
-    .btn-submit:active {
-      transform: translateY(2px);
-      border-bottom-width: 2px;
-    }
-
-    /* 履歴エリア */
     .history-title {
       font-weight: bold;
       margin: 16px 0 8px 0;
@@ -381,7 +322,6 @@
       word-break: break-all;
     }
 
-    /* 設定エリアUI */
     .setting-group {
       background: #f9f9f9;
       border: 1px solid #e0e0e0;
@@ -407,7 +347,6 @@
       cursor: pointer;
     }
 
-    /* 削除ボタン群 */
     .action-group {
       display: flex;
       gap: 8px;
@@ -432,7 +371,6 @@
       color: #fff;
     }
 
-    /* グラフ描画エリア */
     .graph-container {
       position: relative;
       width: 100%;
@@ -526,91 +464,11 @@
         <button class="key-btn action" onclick="pressKey('clear')">C</button>
       </div>
 
-      <!-- モード2: イラスト少年タップ入力 -->
+      <!-- モード2: 画像ファイル切替タップ入力 -->
       <div id="input-mode-tap" class="tap-counter-container" style="display: none;">
         <div id="boy-btn" class="boy-tap-btn" onclick="tapCountUp()">
           <div class="tap-hint-text">タップしてリフティング！</div>
-          
-          <svg class="boy-svg" viewBox="0 0 160 150">
-            <g stroke="#2c3e50" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              
-              <!-- 影 -->
-              <ellipse cx="90" cy="142" rx="35" ry="5" fill="rgba(0,0,0,0.15)" stroke="none" />
-
-              <!-- 左足（軸足） -->
-              <!-- 太もも・すね -->
-              <path d="M 82 88 L 88 115 L 94 135" fill="none" stroke-width="8" stroke="#333" />
-              <!-- ソックス（黒） -->
-              <path d="M 88 115 L 94 135" fill="none" stroke-width="9" stroke="#222" />
-              <!-- 左スパイク（青） -->
-              <path d="M 88 133 L 102 138 L 90 142 Z" fill="#1976d2" stroke="#1565c0" stroke-width="2" />
-
-              <!-- 右足（キックする足: 動くグループ） -->
-              <g id="right-leg">
-                <!-- 太もも・膝曲がり -->
-                <path d="M 75 88 L 60 100 L 82 112" fill="none" stroke-width="8" stroke="#333" />
-                <!-- ソックス（黒） -->
-                <path d="M 62 102 L 82 112" fill="none" stroke-width="9" stroke="#222" />
-                <!-- 右スパイク（青） -->
-                <path d="M 80 108 L 98 100 L 92 116 Z" fill="#1976d2" stroke="#1565c0" stroke-width="2" />
-              </g>
-
-              <!-- パンツ（黒・白ライン） -->
-              <path d="M 60 72 L 92 72 L 95 90 L 80 90 L 76 82 L 70 90 L 58 88 Z" fill="#2c3e50" />
-              <!-- パンツの「10」文字 -->
-              <text x="64" y="85" font-size="8" font-family="sans-serif" font-weight="bold" fill="#ffffff" stroke="none">10</text>
-
-              <!-- ユニフォーム（水色×白ストライプ） -->
-              <path d="M 62 48 L 90 48 L 92 74 L 60 74 Z" fill="#4fc3f7" />
-              <!-- ストライプ模様 -->
-              <line x1="69" y1="48" x2="68" y2="74" stroke="#ffffff" stroke-width="3" />
-              <line x1="76" y1="48" x2="76" y2="74" stroke="#ffffff" stroke-width="3" />
-              <line x1="83" y1="48" x2="84" y2="74" stroke="#ffffff" stroke-width="3" />
-              <!-- 胸番号「10」 -->
-              <text x="70" y="65" font-size="10" font-family="sans-serif" font-weight="bold" fill="#2c3e50" stroke="none">10</text>
-
-              <!-- 左腕（あげている） -->
-              <path d="M 88 52 L 105 40 L 115 48" fill="none" stroke-width="5" stroke="#ffcc80" />
-              <!-- 左手 -->
-              <circle cx="116" cy="49" r="4" fill="#ffcc80" />
-
-              <!-- 右腕（バランスをとっている） -->
-              <path d="M 63 52 L 50 42 L 42 50" fill="none" stroke-width="5" stroke="#ffcc80" />
-              <!-- 右手 -->
-              <circle cx="41" cy="51" r="4" fill="#ffcc80" />
-
-              <!-- 首 -->
-              <rect x="71" y="40" width="10" height="10" fill="#ffcc80" stroke="none" />
-
-              <!-- 顔 -->
-              <ellipse cx="76" cy="30" rx="15" ry="14" fill="#ffcc80" />
-              <!-- 笑顔の口 -->
-              <path d="M 71 34 Q 76 40 81 34" fill="#e53935" stroke="#c62828" stroke-width="1.5" />
-              <!-- 目 -->
-              <circle cx="70" cy="28" r="2" fill="#2c3e50" stroke="none" />
-              <circle cx="82" cy="28" r="2" fill="#2c3e50" stroke="none" />
-              <!-- ほっぺた -->
-              <ellipse cx="66" cy="32" rx="2.5" ry="1.5" fill="#ff8a80" stroke="none" />
-              <ellipse cx="86" cy="32" rx="2.5" ry="1.5" fill="#ff8a80" stroke="none" />
-
-              <!-- 髪の毛（黒の無造作ヘア） -->
-              <path d="M 60 26 Q 58 14 74 12 Q 88 10 92 22 Q 95 30 90 32 Q 88 22 76 20 Q 64 22 62 30 Z" fill="#2c3e50" />
-              <path d="M 65 18 C 68 10, 80 8, 85 16 C 80 13, 72 13, 65 18 Z" fill="#2c3e50" />
-
-              <!-- サッカーボール（動くグループ） -->
-              <g id="ball-group">
-                <circle cx="48" cy="72" r="15" fill="#ffffff" stroke="#2c3e50" stroke-width="2.5" />
-                <!-- ボールの五角形模様 -->
-                <polygon points="48,63 41,68 44,76 52,76 55,68" fill="#2c3e50" stroke="none" />
-                <line x1="48" y1="63" x2="48" y2="57" stroke="#2c3e50" stroke-width="2" />
-                <line x1="41" y1="68" x2="35" y2="66" stroke="#2c3e50" stroke-width="2" />
-                <line x1="44" y1="76" x2="40" y2="82" stroke="#2c3e50" stroke-width="2" />
-                <line x1="52" y1="76" x2="56" y2="82" stroke="#2c3e50" stroke-width="2" />
-                <line x1="55" y1="68" x2="61" y2="66" stroke="#2c3e50" stroke-width="2" />
-              </g>
-
-            </g>
-          </svg>
+          <img id="lifting-img" src="tap1.png" alt="リフティングイラスト">
         </div>
 
         <div class="counter-sub-actions">
@@ -672,7 +530,7 @@
     </div>
   </div>
 
-  <!-- 3. 設定（データ管理・モード切り替え）タブ -->
+  <!-- 3. 設定タブ -->
   <div id="tab-settings" class="tab-content">
     <div class="card">
       <div class="history-title">
@@ -688,7 +546,7 @@
         </label>
         <label class="radio-option">
           <input type="radio" name="input-mode" value="tap" onchange="changeInputMode('tap')">
-          <span>🏃‍♂️ リフティングタップ（1回ずつ押してカウント）</span>
+          <span>🏃‍♂️ リフティングタップ（イラスト画像切り替え）</span>
         </label>
       </div>
 
@@ -724,7 +582,14 @@
   
   let dbData = {};
   let currentInputValue = "";
-  let currentMode = "keypad"; // keypad OR tap
+  let currentMode = "keypad";
+  let tapTimer = null;
+
+  // 画像プリロード（チラつき防止）
+  const img1 = new Image();
+  img1.src = "tap1.png";
+  const img2 = new Image();
+  img2.src = "tap2.png";
 
   window.addEventListener("DOMContentLoaded", () => {
     loadData();
@@ -762,7 +627,6 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(dbData));
   }
 
-  /* --- 入力モード設定機能 --- */
   function loadModeSetting() {
     const savedMode = localStorage.getItem(MODE_STORAGE_KEY);
     if (savedMode === "tap" || savedMode === "keypad") {
@@ -797,7 +661,6 @@
     document.getElementById("input-display").textContent = "0";
   }
 
-  /* --- テンキー操作 --- */
   function pressKey(key) {
     if (key === 'clear') {
       currentInputValue = "";
@@ -812,7 +675,7 @@
     document.getElementById("input-display").textContent = currentInputValue || "0";
   }
 
-  /* --- リフティングタップカウント操作 --- */
+  /* --- 画像ファイルタップ（2コマ切り替え）操作 --- */
   function tapCountUp() {
     let count = parseInt(currentInputValue, 10) || 0;
     if (count < 99999) {
@@ -820,11 +683,17 @@
       currentInputValue = String(count);
       document.getElementById("input-display").textContent = currentInputValue;
       
-      // キックアニメーションのトリガー
-      const boyBtn = document.getElementById("boy-btn");
-      boyBtn.classList.remove("kicking");
-      void boyBtn.offsetWidth; // リフロー発生させてアニメーションを再実行可能にする
-      boyBtn.classList.add("kicking");
+      const imgEl = document.getElementById("lifting-img");
+
+      if (tapTimer) clearTimeout(tapTimer);
+
+      // タップ時に tap2.png に変更
+      imgEl.src = "tap2.png";
+
+      // 0.25秒後に tap1.png に戻す
+      tapTimer = setTimeout(() => {
+        imgEl.src = "tap1.png";
+      }, 250);
     }
   }
 
@@ -840,9 +709,9 @@
   function tapCountReset() {
     currentInputValue = "";
     document.getElementById("input-display").textContent = "0";
+    document.getElementById("lifting-img").src = "tap1.png";
   }
 
-  /* --- 記録追加 --- */
   function addRecord() {
     const val = parseInt(currentInputValue, 10);
     if (isNaN(val) || val <= 0) return;
@@ -955,7 +824,6 @@
     if (tabName === 'settings') document.querySelectorAll(".tab-btn")[2].classList.add("active");
   }
 
-  /* --- インポート・エクスポート機能 --- */
   function exportData() {
     if (Object.keys(dbData).length === 0) {
       alert("エクスポートする記録がありません。");
@@ -1001,7 +869,6 @@
     reader.readAsText(file);
   }
 
-  /* --- グラフ描画 --- */
   function renderGraph() {
     const canvas = document.getElementById("chartCanvas");
     const ctx = canvas.getContext("2d");
