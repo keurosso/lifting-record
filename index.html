@@ -19,6 +19,8 @@
       box-sizing: border-box;
       user-select: none;
       -webkit-user-select: none;
+      -webkit-touch-callout: none; /* スマホ長押し時のメニュー表示防止 */
+      -webkit-tap-highlight-color: transparent; /* タップ時の青い枠線を消す */
       margin: 0;
       padding: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -217,6 +219,7 @@
       height: 100%;
       object-fit: cover;
       display: block;
+      pointer-events: none; /* 画像自体のドラッグや選択を無効化 */
     }
 
     .tap-hint-text {
@@ -468,7 +471,7 @@
       <div id="input-mode-tap" class="tap-counter-container" style="display: none;">
         <div id="boy-btn" class="boy-tap-btn" onclick="tapCountUp()">
           <div class="tap-hint-text">タップしてリフティング！</div>
-          <img id="lifting-img" src="tap1.png" alt="リフティングイラスト">
+          <img id="lifting-img" src="tap1.png" alt="リフティングイラスト" draggable="false">
         </div>
 
         <div class="counter-sub-actions">
