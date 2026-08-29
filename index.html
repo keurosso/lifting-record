@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>リフティング記録 v1.5</title>
+  <title>リフティング記録 v1.6</title>
   <style>
     /* 全体・サッカーフィールド背景 */
     :root {
@@ -206,7 +206,7 @@
       color: #e65100;
     }
 
-    /* モード2: ボールタップカウントUI */
+    /* モード2: リフティングアニメーションタップ入力 */
     .tap-counter-container {
       display: flex;
       flex-direction: column;
@@ -215,25 +215,72 @@
       margin-bottom: 16px;
     }
 
-    .ball-tap-btn {
-      width: 140px;
-      height: 140px;
-      border-radius: 50%;
-      background: #ffffff;
-      border: 6px solid #333;
-      font-size: 70px;
+    /* キャラクターエリア */
+    .boy-tap-btn {
+      position: relative;
+      width: 160px;
+      height: 180px;
+      background: #e8f5e9;
+      border: 3px dashed #a5d6a7;
+      border-radius: 20px;
       display: flex;
-      align-items: center;
       justify-content: center;
+      align-items: flex-end;
+      padding-bottom: 10px;
       cursor: pointer;
-      box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-      transition: transform 0.05s, background-color 0.1s;
+      overflow: hidden;
       touch-action: manipulation;
+      box-shadow: inset 0 2px 6px rgba(0,0,0,0.05);
     }
 
-    .ball-tap-btn:active {
-      transform: scale(0.92);
-      background-color: #e8f5e9;
+    .tap-hint-text {
+      position: absolute;
+      top: 8px;
+      font-size: 11px;
+      color: #2e7d32;
+      font-weight: bold;
+      background: rgba(255,255,255,0.8);
+      padding: 2px 8px;
+      border-radius: 10px;
+      pointer-events: none;
+    }
+
+    /* SVGアニメーション設定 */
+    .boy-svg {
+      width: 120px;
+      height: 140px;
+      pointer-events: none;
+    }
+
+    #ball-group {
+      transform-origin: center center;
+      transition: transform 0.05s linear;
+    }
+
+    #right-leg {
+      transform-origin: 65px 95px;
+      transition: transform 0.05s linear;
+    }
+
+    /* タップ時のキックアニメーションクラス */
+    .boy-tap-btn.kicking #right-leg {
+      animation: kickLeg 0.25s ease-out;
+    }
+
+    .boy-tap-btn.kicking #ball-group {
+      animation: bounceBall 0.25s ease-out;
+    }
+
+    @keyframes kickLeg {
+      0% { transform: rotate(0deg); }
+      30% { transform: rotate(-35deg); }
+      100% { transform: rotate(0deg); }
+    }
+
+    @keyframes bounceBall {
+      0% { transform: translateY(0); }
+      35% { transform: translateY(-42px) scale(1.05); }
+      100% { transform: translateY(0) scale(1); }
     }
 
     .counter-sub-actions {
@@ -479,9 +526,38 @@
         <button class="key-btn action" onclick="pressKey('clear')">C</button>
       </div>
 
-      <!-- モード2: ボールタップカウント入力 -->
+      <!-- モード2: リフティング少年タップ入力 -->
       <div id="input-mode-tap" class="tap-counter-container" style="display: none;">
-        <div class="ball-tap-btn" onclick="tapCountUp()">⚽</div>
+        <div id="boy-btn" class="boy-tap-btn" onclick="tapCountUp()">
+          <div class="tap-hint-text">タップしてリフティング！</div>
+          
+          <svg class="boy-svg" viewBox="0 0 100 140">
+            <!-- 頭部・髪の毛 -->
+            <circle cx="50" cy="22" r="14" fill="#ffcc80" />
+            <path d="M 36 18 Q 50 4 64 18 Q 50 12 36 18 Z" fill="#4e342e" />
+            <circle cx="45" cy="22" r="2" fill="#333" />
+            <circle cx="55" cy="22" r="2" fill="#333" />
+            <!-- ユニフォーム (胴体) -->
+            <path d="M 38 36 L 62 36 L 58 75 L 42 75 Z" fill="#2196f3" />
+            <!-- 左足 (軸足) -->
+            <path d="M 44 75 L 42 110 L 32 110 L 32 116 L 46 116 L 48 75 Z" fill="#333" />
+            
+            <!-- 右足 (キックする足: 動くパーツ) -->
+            <g id="right-leg">
+              <path d="M 54 75 L 60 98 L 78 98 L 78 90 L 66 90 L 58 75 Z" fill="#e53935" />
+              <!-- スパイク -->
+              <rect x="74" y="94" width="12" height="6" rx="2" fill="#111" />
+            </g>
+
+            <!-- サッカーボール (動くパーツ) -->
+            <g id="ball-group">
+              <circle cx="75" cy="80" r="11" fill="#ffffff" stroke="#111" stroke-width="1.5" />
+              <!-- ボールの模様 -->
+              <polygon points="75,73 71,76 72,81 78,81 79,76" fill="#111" />
+            </g>
+          </svg>
+        </div>
+
         <div class="counter-sub-actions">
           <button class="btn-count-down" onclick="tapCountDown()">1減らす (-1)</button>
           <button class="btn-count-reset" onclick="tapCountReset()">クリア (C)</button>
@@ -557,7 +633,7 @@
         </label>
         <label class="radio-option">
           <input type="radio" name="input-mode" value="tap" onchange="changeInputMode('tap')">
-          <span>⚽ ボールタップ（1回ずつ押してカウント）</span>
+          <span>🏃‍♂️ リフティングタップ（1回ずつ押してカウント）</span>
         </label>
       </div>
 
@@ -646,13 +722,11 @@
   }
 
   function applyModeUI() {
-    // ラジオボタンの状態更新
     const radios = document.getElementsByName("input-mode");
     radios.forEach(r => {
       r.checked = (r.value === currentMode);
     });
 
-    // 表示切り替え
     const keypadEl = document.getElementById("input-mode-keypad");
     const tapEl = document.getElementById("input-mode-tap");
 
@@ -664,7 +738,6 @@
       tapEl.style.display = "none";
     }
     
-    // 入力エリアリセット
     currentInputValue = "";
     document.getElementById("input-display").textContent = "0";
   }
@@ -684,13 +757,19 @@
     document.getElementById("input-display").textContent = currentInputValue || "0";
   }
 
-  /* --- ボールタップカウント操作 --- */
+  /* --- リフティングタップカウント操作 --- */
   function tapCountUp() {
     let count = parseInt(currentInputValue, 10) || 0;
     if (count < 99999) {
       count++;
       currentInputValue = String(count);
       document.getElementById("input-display").textContent = currentInputValue;
+      
+      // キックアニメーションのトリガー
+      const boyBtn = document.getElementById("boy-btn");
+      boyBtn.classList.remove("kicking");
+      void boyBtn.offsetWidth; // リフロー発生させてアニメーションを再実行可能にする
+      boyBtn.classList.add("kicking");
     }
   }
 
