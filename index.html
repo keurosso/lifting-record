@@ -224,7 +224,7 @@
 
     .tap-hint-text {
       position: absolute;
-      top: 8px;
+      bottom: 12px; /* 画像の下側に配置 */
       left: 50%;
       transform: translateX(-50%);
       font-size: 11px;
@@ -470,8 +470,8 @@
       <!-- モード2: 画像ファイル切替タップ入力 -->
       <div id="input-mode-tap" class="tap-counter-container" style="display: none;">
         <div id="boy-btn" class="boy-tap-btn" onclick="tapCountUp()">
-          <div class="tap-hint-text">タップしてリフティング！</div>
           <img id="lifting-img" src="tap1.png" alt="リフティングイラスト" draggable="false">
+          <div class="tap-hint-text">タップしてリフティング！</div>
         </div>
 
         <div class="counter-sub-actions">
