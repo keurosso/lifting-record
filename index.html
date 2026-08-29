@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>リフティング記録 v2.0</title>
+  <!-- Chart.js (CDN) の読み込み -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     /* 全体・サッカーフィールド背景 */
     :root {
@@ -19,8 +21,8 @@
       box-sizing: border-box;
       user-select: none;
       -webkit-user-select: none;
-      -webkit-touch-callout: none; /* スマホ長押し時のメニュー表示防止 */
-      -webkit-tap-highlight-color: transparent; /* タップ時の青い枠線を消す */
+      -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent;
       margin: 0;
       padding: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -106,7 +108,7 @@
       color: var(--pitch-dark);
     }
 
-    /* 今日の集計グリッド */
+    /* 集計グリッド */
     .stats-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -165,7 +167,7 @@
       letter-spacing: 2px;
     }
 
-    /* モード1: テンキー */
+    /* テンキー */
     .keypad {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -193,7 +195,7 @@
       color: #e65100;
     }
 
-    /* モード2: 画像タップ入力エリア */
+    /* 画像タップ入力エリア */
     .tap-counter-container {
       display: flex;
       flex-direction: column;
@@ -219,12 +221,12 @@
       height: 100%;
       object-fit: cover;
       display: block;
-      pointer-events: none; /* 画像自体のドラッグや選択を無効化 */
+      pointer-events: none;
     }
 
     .tap-hint-text {
       position: absolute;
-      bottom: 12px; /* 画像の下側に配置 */
+      bottom: 12px;
       left: 50%;
       transform: translateX(-50%);
       font-size: 11px;
@@ -266,7 +268,6 @@
       color: #666;
     }
 
-    /* ボタン */
     .btn-submit {
       width: 100%;
       background: var(--accent-yellow);
@@ -377,34 +378,8 @@
     .graph-container {
       position: relative;
       width: 100%;
-      height: 220px;
+      height: 240px;
       margin-top: 10px;
-    }
-
-    canvas {
-      width: 100%;
-      height: 100%;
-    }
-
-    .legend {
-      display: flex;
-      justify-content: center;
-      gap: 16px;
-      margin-top: 8px;
-      font-size: 12px;
-      font-weight: bold;
-    }
-
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .legend-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
     }
 
     .unit {
@@ -519,17 +494,6 @@
       <div class="graph-container">
         <canvas id="chartCanvas"></canvas>
       </div>
-
-      <div class="legend">
-        <div class="legend-item">
-          <div class="legend-dot" style="background: #e65100;"></div>
-          <span>● 最高記録</span>
-        </div>
-        <div class="legend-item">
-          <div class="legend-dot" style="background: #0288d1;"></div>
-          <span>○ 平均回数</span>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -540,7 +504,6 @@
         <span>⚙️ 設定・データ管理</span>
       </div>
 
-      <!-- 入力モード設定 -->
       <div class="setting-group">
         <span class="setting-label">🎮 入力モードの切り替え</span>
         <label class="radio-option">
@@ -553,7 +516,6 @@
         </label>
       </div>
 
-      <!-- バックアップ設定 -->
       <div style="margin-top: 16px;">
         <p style="font-size: 13px; color: #555; margin-bottom: 12px; line-height: 1.5;">
           機種変更時などのデータ引継ぎ用：
@@ -587,12 +549,11 @@
   let currentInputValue = "";
   let currentMode = "keypad";
   let tapTimer = null;
+  let chartInstance = null; // Chart.js インスタンス
 
-  // 画像プリロード（チラつき防止）
-  const img1 = new Image();
-  img1.src = "tap1.png";
-  const img2 = new Image();
-  img2.src = "tap2.png";
+  // 画像プリロード
+  const img1 = new Image(); img1.src = "tap1.png";
+  const img2 = new Image(); img2.src = "tap2.png";
 
   window.addEventListener("DOMContentLoaded", () => {
     loadData();
@@ -605,10 +566,7 @@
 
   function getTodayKey() {
     const d = new Date();
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const date = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${date}`;
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
   function updateDateDisplay() {
@@ -632,9 +590,7 @@
 
   function loadModeSetting() {
     const savedMode = localStorage.getItem(MODE_STORAGE_KEY);
-    if (savedMode === "tap" || savedMode === "keypad") {
-      currentMode = savedMode;
-    }
+    if (savedMode === "tap" || savedMode === "keypad") currentMode = savedMode;
   }
 
   function changeInputMode(mode) {
@@ -644,41 +600,20 @@
   }
 
   function applyModeUI() {
-    const radios = document.getElementsByName("input-mode");
-    radios.forEach(r => {
-      r.checked = (r.value === currentMode);
-    });
-
-    const keypadEl = document.getElementById("input-mode-keypad");
-    const tapEl = document.getElementById("input-mode-tap");
-
-    if (currentMode === "tap") {
-      keypadEl.style.display = "none";
-      tapEl.style.display = "flex";
-    } else {
-      keypadEl.style.display = "grid";
-      tapEl.style.display = "none";
-    }
-    
+    document.getElementsByName("input-mode").forEach(r => r.checked = (r.value === currentMode));
+    document.getElementById("input-mode-keypad").style.display = currentMode === "tap" ? "none" : "grid";
+    document.getElementById("input-mode-tap").style.display = currentMode === "tap" ? "flex" : "none";
     currentInputValue = "";
     document.getElementById("input-display").textContent = "0";
   }
 
   function pressKey(key) {
-    if (key === 'clear') {
-      currentInputValue = "";
-    } else if (key === 'back') {
-      currentInputValue = currentInputValue.slice(0, -1);
-    } else {
-      if (currentInputValue.length < 5) {
-        if (currentInputValue === "" && key === '0') return;
-        currentInputValue += key;
-      }
-    }
+    if (key === 'clear') currentInputValue = "";
+    else if (key === 'back') currentInputValue = currentInputValue.slice(0, -1);
+    else if (currentInputValue.length < 5 && !(currentInputValue === "" && key === '0')) currentInputValue += key;
     document.getElementById("input-display").textContent = currentInputValue || "0";
   }
 
-  /* --- 画像ファイルタップ（2コマ切り替え）操作 --- */
   function tapCountUp() {
     let count = parseInt(currentInputValue, 10) || 0;
     if (count < 99999) {
@@ -687,16 +622,9 @@
       document.getElementById("input-display").textContent = currentInputValue;
       
       const imgEl = document.getElementById("lifting-img");
-
       if (tapTimer) clearTimeout(tapTimer);
-
-      // タップ時に tap2.png に変更
       imgEl.src = "tap2.png";
-
-      // 0.25秒後に tap1.png に戻す
-      tapTimer = setTimeout(() => {
-        imgEl.src = "tap1.png";
-      }, 250);
+      tapTimer = setTimeout(() => { imgEl.src = "tap1.png"; }, 250);
     }
   }
 
@@ -768,7 +696,6 @@
       const sum = list.reduce((a, b) => a + b, 0);
       const max = Math.max(...list);
       const avg = (sum / list.length).toFixed(1);
-      
       let dateLabel = key === todayKey ? "今日" : `${parseInt(key.split("-")[1])}/${parseInt(key.split("-")[2])}`;
 
       const item = document.createElement("div");
@@ -828,27 +755,19 @@
   }
 
   function exportData() {
-    if (Object.keys(dbData).length === 0) {
-      alert("エクスポートする記録がありません。");
-      return;
-    }
-    const dataStr = JSON.stringify(dbData);
-    const blob = new Blob([dataStr], { type: "application/json" });
+    if (Object.keys(dbData).length === 0) return alert("エクスポートする記録がありません。");
+    const blob = new Blob([JSON.stringify(dbData)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    const dateStr = getTodayKey().replace(/-/g, "");
     a.href = url;
-    a.download = `lifting_backup_${dateStr}.json`;
-    document.body.appendChild(a);
+    a.download = `lifting_backup_${getTodayKey().replace(/-/g, "")}.json`;
     a.click();
-    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }
 
   function importData(event) {
     const file = event.target.files[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = function(e) {
       try {
@@ -861,97 +780,95 @@
             renderHistoryList();
             alert("データの復元が完了しました。");
           }
-        } else {
-          alert("ファイル形式が正しくありません。");
-        }
-      } catch (err) {
-        alert("ファイルの読み込みに失敗しました。正しいバックアップファイルを選択してください。");
-      }
+        } else { alert("ファイル形式が正しくありません。"); }
+      } catch (err) { alert("ファイルの読み込みに失敗しました。"); }
       event.target.value = '';
     };
     reader.readAsText(file);
   }
 
+  /* --- Chart.jsを使ったグラフ描画 --- */
   function renderGraph() {
-    const canvas = document.getElementById("chartCanvas");
-    const ctx = canvas.getContext("2d");
-    const rect = canvas.parentElement.getBoundingClientRect();
-    canvas.width = rect.width * 2;
-    canvas.height = rect.height * 2;
-    const width = canvas.width;
-    const height = canvas.height;
+    const labels = [];
+    const maxData = [];
+    const avgData = [];
 
-    ctx.clearRect(0, 0, width, height);
-
-    const dates = [];
     const now = new Date();
+    let globalMax = 0, periodSumAll = 0, periodCountAll = 0;
+
     for (let i = 13; i >= 0; i--) {
       const d = new Date(now);
       d.setDate(d.getDate() - i);
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      dates.push({ key: `${y}-${m}-${day}`, label: `${d.getMonth() + 1}/${d.getDate()}` });
-    }
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      labels.push(`${d.getMonth() + 1}/${d.getDate()}`);
 
-    let globalMax = 0, periodSumAll = 0, periodCountAll = 0;
-    const chartData = dates.map(d => {
-      const list = dbData[d.key];
+      const list = dbData[key];
       if (list && list.length > 0) {
         const max = Math.max(...list);
         const sum = list.reduce((a, b) => a + b, 0);
+        const avg = parseFloat((sum / list.length).toFixed(1));
+
         if (max > globalMax) globalMax = max;
         periodSumAll += sum;
         periodCountAll += list.length;
-        return { max, avg: sum / list.length, hasData: true, label: d.label };
+
+        maxData.push(max);
+        avgData.push(avg);
+      } else {
+        maxData.push(null);
+        avgData.push(null);
       }
-      return { max: 0, avg: 0, hasData: false, label: d.label };
-    });
+    }
 
     document.getElementById("stat-period-max").innerHTML = `${globalMax}<span class="unit">回</span>`;
     document.getElementById("stat-period-avg").innerHTML = `${(periodCountAll > 0 ? (periodSumAll / periodCountAll) : 0).toFixed(1)}<span class="unit">回</span>`;
 
-    const paddingLeft = 60, paddingRight = 30, paddingTop = 40, paddingBottom = 60;
-    const graphW = width - paddingLeft - paddingRight;
-    const graphH = height - paddingTop - paddingBottom;
-    const yMax = Math.max(10, Math.ceil((globalMax * 1.15) / 10) * 10);
+    const ctx = document.getElementById("chartCanvas").getContext("2d");
 
-    ctx.strokeStyle = "#e0e0e0"; ctx.lineWidth = 1.5; ctx.fillStyle = "#666"; ctx.font = "20px sans-serif"; ctx.textAlign = "right";
-    for (let i = 0; i <= 4; i++) {
-      const y = height - paddingBottom - (graphH / 4) * i;
-      ctx.beginPath(); ctx.moveTo(paddingLeft, y); ctx.lineTo(width - paddingRight, y); ctx.stroke();
-      ctx.fillText(Math.round((yMax / 4) * i), paddingLeft - 10, y + 6);
+    if (chartInstance) {
+      chartInstance.destroy();
     }
 
-    const stepX = graphW / (dates.length - 1);
-    ctx.textAlign = "center";
-    dates.forEach((d, idx) => {
-      if (idx % 2 === 1 || idx === dates.length - 1) ctx.fillText(d.label, paddingLeft + idx * stepX, height - paddingBottom + 30);
-    });
-
-    const getX = (idx) => paddingLeft + idx * stepX;
-    const getY = (val) => height - paddingBottom - (val / yMax) * graphH;
-
-    drawLineAndPoints(ctx, chartData, getX, getY, 'avg', '#0288d1', false);
-    drawLineAndPoints(ctx, chartData, getX, getY, 'max', '#e65100', true);
-  }
-
-  function drawLineAndPoints(ctx, data, getX, getY, key, color, isSolid) {
-    ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.beginPath();
-    let isStarted = false;
-    data.forEach((d, i) => {
-      if (d.hasData) {
-        const x = getX(i), y = getY(d[key]);
-        !isStarted ? (ctx.moveTo(x, y), isStarted = true) : ctx.lineTo(x, y);
-      }
-    });
-    ctx.stroke();
-
-    data.forEach((d, i) => {
-      if (d.hasData) {
-        ctx.beginPath(); ctx.arc(getX(i), getY(d[key]), 8, 0, Math.PI * 2);
-        if (isSolid) { ctx.fillStyle = color; ctx.fill(); } 
-        else { ctx.fillStyle = "#ffffff"; ctx.fill(); ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.stroke(); }
+    chartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: '最高記録',
+            data: maxData,
+            borderColor: '#e65100',
+            backgroundColor: '#e65100',
+            spanGaps: true,
+            tension: 0.1
+          },
+          {
+            label: '平均回数',
+            data: avgData,
+            borderColor: '#0288d1',
+            backgroundColor: '#ffffff',
+            pointBorderColor: '#0288d1',
+            pointBorderWidth: 2,
+            spanGaps: true,
+            tension: 0.1
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+            suggestedMax: Math.max(10, Math.ceil((globalMax * 1.15) / 10) * 10)
+          }
+        },
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { boxWidth: 12 }
+          }
+        }
       }
     });
   }
