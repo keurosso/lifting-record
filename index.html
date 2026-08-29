@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>リフティング記録 v1.3</title>
+  <title>リフティング記録 v1.4</title>
   <style>
     /* 全体・サッカーフィールド背景 */
     :root {
@@ -27,7 +27,6 @@
 
     body {
       background-color: var(--pitch-dark);
-      /* CSSのみで芝生ストライプとラインを表現 */
       background-image: 
         linear-gradient(0deg, var(--pitch-dark) 50%, var(--pitch-light) 50%),
         linear-gradient(90deg, transparent 49%, var(--pitch-line) 49%, var(--pitch-line) 51%, transparent 51%);
@@ -60,18 +59,18 @@
 
     .tab-btn {
       flex: 1;
-      padding: 12px 0;
+      padding: 10px 0;
       border: none;
       background: transparent;
       color: #fff;
-      font-size: 16px;
+      font-size: 14px;
       font-weight: bold;
       border-radius: 8px;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
+      gap: 4px;
       transition: background 0.2s;
     }
 
@@ -207,7 +206,7 @@
       color: #e65100;
     }
 
-    /* 記録追加ボタン（黄色） */
+    /* 記録追加・汎用ボタン */
     .btn-submit {
       width: 100%;
       background: var(--accent-yellow);
@@ -215,7 +214,7 @@
       border-bottom: 4px solid #f57f17;
       border-radius: 12px;
       color: #333;
-      font-size: 20px;
+      font-size: 18px;
       font-weight: bold;
       padding: 16px;
       cursor: pointer;
@@ -225,12 +224,12 @@
       align-items: center;
       justify-content: center;
       gap: 8px;
+      margin-bottom: 8px;
     }
 
     .btn-submit:active {
       transform: translateY(2px);
       border-bottom-width: 2px;
-      background: var(--accent-yellow-hover);
     }
 
     /* 履歴エリア */
@@ -277,7 +276,7 @@
     .action-group {
       display: flex;
       gap: 8px;
-      margin-top: 16px;
+      margin-top: 12px;
     }
 
     .btn-danger-sub, .btn-danger {
@@ -332,7 +331,6 @@
       border-radius: 50%;
     }
 
-    /* ユーティリティ */
     .unit {
       font-size: 12px;
       font-weight: normal;
@@ -347,16 +345,16 @@
   <div class="tab-nav">
     <button class="tab-btn active" onclick="switchTab('record')">⚽ 記録</button>
     <button class="tab-btn" onclick="switchTab('graph')">📈 グラフ</button>
+    <button class="tab-btn" onclick="switchTab('settings')">⚙️ 設定</button>
   </div>
 
   <!-- 1. 記録タブ -->
   <div id="tab-record" class="tab-content active">
     <div class="card">
       <div class="date-header">
-        📅 <span id="current-date-str">2026/08/29</span>
+        📅 <span id="current-date-str"></span>
       </div>
 
-      <!-- 今日の集計結果 -->
       <div class="stats-grid">
         <div class="stat-box highlight">
           <div class="stat-label">今日の最高記録</div>
@@ -372,7 +370,6 @@
         </div>
       </div>
 
-      <!-- テンキー＆ディスプレイ -->
       <div class="display-container">
         <div class="display-value" id="input-display">0</div>
       </div>
@@ -397,8 +394,7 @@
       </button>
 
       <div class="action-group">
-        <button class="btn-danger-sub" onclick="deleteLastRecord()">直前の記録を削除</button>
-        <button class="btn-danger" onclick="clearAllData()">全部消去</button>
+        <button class="btn-danger-sub" onclick="deleteLastRecord()">直前の記録を1件削除</button>
       </div>
     </div>
 
@@ -407,9 +403,7 @@
       <div class="history-title">
         <span>📋 日ごとの記録</span>
       </div>
-      <div class="history-list" id="history-list-container">
-        <!-- JSで動的生成 -->
-      </div>
+      <div class="history-list" id="history-list-container"></div>
     </div>
   </div>
 
@@ -420,7 +414,6 @@
         📊 過去14日間の記録
       </div>
 
-      <!-- 14日間集計 -->
       <div class="stats-grid">
         <div class="stat-box highlight">
           <div class="stat-label">14日間の最高記録</div>
@@ -432,7 +425,6 @@
         </div>
       </div>
 
-      <!-- Canvas折れ線グラフ -->
       <div class="graph-container">
         <canvas id="chartCanvas"></canvas>
       </div>
@@ -449,17 +441,42 @@
       </div>
     </div>
   </div>
+
+  <!-- 3. 設定（データ管理）タブ -->
+  <div id="tab-settings" class="tab-content">
+    <div class="card">
+      <div class="history-title">
+        <span>⚙️ データ管理</span>
+      </div>
+      <p style="font-size: 13px; color: #555; margin-bottom: 20px; line-height: 1.5;">
+        記録データは現在このスマホのブラウザ内にのみ保存されています。<br>
+        機種変更時などに記録を引き継ぐには、一度エクスポート（保存）して、新しいスマホでインポート（復元）してください。
+      </p>
+
+      <button class="btn-submit" style="background: #4caf50; border-bottom-color: #388e3c; color: white;" onclick="exportData()">
+        📤 エクスポート (バックアップ保存)
+      </button>
+
+      <button class="btn-submit" style="background: #2196f3; border-bottom-color: #1976d2; color: white;" onclick="document.getElementById('import-file').click()">
+        📥 インポート (データ復元)
+      </button>
+      <input type="file" id="import-file" style="display: none;" accept=".json" onchange="importData(event)">
+
+      <div style="margin-top: 32px; border-top: 1px solid #ccc; padding-top: 16px;">
+        <p style="font-size: 12px; color: #c62828; margin-bottom: 8px; font-weight: bold;">※危険な操作（取り消しできません）</p>
+        <button class="btn-danger" style="width: 100%; padding: 14px; font-size: 16px;" onclick="clearAllData()">
+          🗑 全ての記録を消去する
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
-  // localStorageキー（仕様書14より既存互換）
   const STORAGE_KEY = "lifting-records-v2";
-
-  // グローバルデータ構造: { "YYYY-MM-DD": [23, 51, 38], ... }
   let dbData = {};
   let currentInputValue = "";
 
-  // 初期化
   window.addEventListener("DOMContentLoaded", () => {
     loadData();
     updateDateDisplay();
@@ -467,7 +484,6 @@
     renderHistoryList();
   });
 
-  // 日付文字列取得（YYYY-MM-DD）
   function getTodayKey() {
     const d = new Date();
     const year = d.getFullYear();
@@ -476,50 +492,32 @@
     return `${year}-${month}-${date}`;
   }
 
-  // 表示用日付フォーマット
   function updateDateDisplay() {
     const d = new Date();
-    const month = d.getMonth() + 1;
-    const date = d.getDate();
     const dayNames = ["日", "月", "火", "水", "木", "金", "土"];
-    const day = dayNames[d.getDay()];
-    document.getElementById("current-date-str").textContent = `${d.getFullYear()}/${month}/${date} (${day})`;
+    document.getElementById("current-date-str").textContent = `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} (${dayNames[d.getDay()]})`;
   }
 
-  // データ読込
   function loadData() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        dbData = JSON.parse(raw);
-      } else {
-        dbData = {};
-      }
+      dbData = raw ? JSON.parse(raw) : {};
     } catch (e) {
-      console.error("Data load error", e);
       dbData = {};
     }
   }
 
-  // データ保存
   function saveData() {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(dbData));
-    } catch (e) {
-      alert("データの保存に失敗しました。");
-    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(dbData));
   }
 
-  // テンキー操作
   function pressKey(key) {
     if (key === 'clear') {
       currentInputValue = "";
     } else if (key === 'back') {
       currentInputValue = currentInputValue.slice(0, -1);
     } else {
-      // 最大5桁制限
       if (currentInputValue.length < 5) {
-        // 先頭の無駄な0を防止
         if (currentInputValue === "" && key === '0') return;
         currentInputValue += key;
       }
@@ -527,15 +525,12 @@
     document.getElementById("input-display").textContent = currentInputValue || "0";
   }
 
-  // 今日の記録に追加
   function addRecord() {
     const val = parseInt(currentInputValue, 10);
     if (isNaN(val) || val <= 0) return;
 
     const today = getTodayKey();
-    if (!dbData[today]) {
-      dbData[today] = [];
-    }
+    if (!dbData[today]) dbData[today] = [];
     dbData[today].push(val);
 
     saveData();
@@ -546,7 +541,6 @@
     renderHistoryList();
   }
 
-  // 今日の統計更新
   function renderTodayStats() {
     const today = getTodayKey();
     const list = dbData[today] || [];
@@ -567,13 +561,11 @@
     document.getElementById("stat-today-avg").innerHTML = `${avg}<span class="unit">回</span>`;
   }
 
-  // 履歴一覧の描画
   function renderHistoryList() {
     const container = document.getElementById("history-list-container");
     container.innerHTML = "";
-
     const todayKey = getTodayKey();
-    const keys = Object.keys(dbData).sort().reverse(); // 新しい日付順
+    const keys = Object.keys(dbData).sort().reverse();
 
     if (keys.length === 0) {
       container.innerHTML = `<div style="text-align:center; color:#888; font-size:13px; padding:12px;">まだ記録がありません</div>`;
@@ -583,19 +575,11 @@
     keys.forEach(key => {
       const list = dbData[key];
       if (!list || list.length === 0) return;
-
       const sum = list.reduce((a, b) => a + b, 0);
       const max = Math.max(...list);
       const avg = (sum / list.length).toFixed(1);
-
-      // 表示日付の整形 (今日なら「今日」、それ以外は M/D)
-      let dateLabel = key;
-      if (key === todayKey) {
-        dateLabel = "今日";
-      } else {
-        const parts = key.split("-");
-        dateLabel = `${parseInt(parts[1], 10)}/${parseInt(parts[2], 10)}`;
-      }
+      
+      let dateLabel = key === todayKey ? "今日" : `${parseInt(key.split("-")[1])}/${parseInt(key.split("-")[2])}`;
 
       const item = document.createElement("div");
       item.className = "history-item";
@@ -613,15 +597,12 @@
     });
   }
 
-  // 直前の記録を削除
   function deleteLastRecord() {
     const today = getTodayKey();
     if (dbData[today] && dbData[today].length > 0) {
       if (confirm("今日入力した一番最後の記録を削除しますか？")) {
         dbData[today].pop();
-        if (dbData[today].length === 0) {
-          delete dbData[today];
-        }
+        if (dbData[today].length === 0) delete dbData[today];
         saveData();
         renderTodayStats();
         renderHistoryList();
@@ -631,53 +612,89 @@
     }
   }
 
-  // 全消去
   function clearAllData() {
-    if (confirm("これまでの記録を【すべて】消去しますか？\n※この操作は取り消せません。")) {
+    if (confirm("これまでの全期間の記録を【すべて】消去しますか？\n※この操作は取り消せません。")) {
       dbData = {};
       saveData();
       renderTodayStats();
       renderHistoryList();
-      if (document.getElementById("tab-graph").classList.contains("active")) {
-        renderGraph();
-      }
+      if (document.getElementById("tab-graph").classList.contains("active")) renderGraph();
+      alert("全てのデータを消去しました。");
     }
   }
 
-  // タブ切り替え
   function switchTab(tabName) {
-    const tabs = document.querySelectorAll(".tab-content");
-    const btns = document.querySelectorAll(".tab-btn");
+    document.querySelectorAll(".tab-content").forEach(t => t.classList.remove("active"));
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
 
-    tabs.forEach(t => t.classList.remove("active"));
-    btns.forEach(b => b.classList.remove("active"));
-
-    if (tabName === 'record') {
-      document.getElementById("tab-record").classList.add("active");
-      btns[0].classList.add("active");
-    } else {
-      document.getElementById("tab-graph").classList.add("active");
-      btns[1].classList.add("active");
+    document.getElementById(`tab-${tabName}`).classList.add("active");
+    
+    if (tabName === 'record') document.querySelectorAll(".tab-btn")[0].classList.add("active");
+    if (tabName === 'graph') {
+      document.querySelectorAll(".tab-btn")[1].classList.add("active");
       renderGraph();
     }
+    if (tabName === 'settings') document.querySelectorAll(".tab-btn")[2].classList.add("active");
   }
 
-  // 14日間グラフ描画 (Canvas)
+  /* --- インポート・エクスポート機能 --- */
+  function exportData() {
+    if (Object.keys(dbData).length === 0) {
+      alert("エクスポートする記録がありません。");
+      return;
+    }
+    const dataStr = JSON.stringify(dbData);
+    const blob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const dateStr = getTodayKey().replace(/-/g, "");
+    a.href = url;
+    a.download = `lifting_backup_${dateStr}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function importData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const importedData = JSON.parse(e.target.result);
+        if (typeof importedData === 'object' && importedData !== null && !Array.isArray(importedData)) {
+          if (confirm("現在のデータが上書きされます。インポートを実行しますか？")) {
+            dbData = importedData;
+            saveData();
+            renderTodayStats();
+            renderHistoryList();
+            alert("データの復元が完了しました。");
+          }
+        } else {
+          alert("ファイル形式が正しくありません。");
+        }
+      } catch (err) {
+        alert("ファイルの読み込みに失敗しました。正しいバックアップファイルを選択してください。");
+      }
+      event.target.value = ''; // 連続で同じファイルを読み込めるようにリセット
+    };
+    reader.readAsText(file);
+  }
+
+  /* --- グラフ描画 --- */
   function renderGraph() {
     const canvas = document.getElementById("chartCanvas");
     const ctx = canvas.getContext("2d");
-
-    // レティナディスプレイ対応
     const rect = canvas.parentElement.getBoundingClientRect();
     canvas.width = rect.width * 2;
     canvas.height = rect.height * 2;
-
     const width = canvas.width;
     const height = canvas.height;
 
     ctx.clearRect(0, 0, width, height);
 
-    // 過去14日間の日付リスト生成
     const dates = [];
     const now = new Date();
     for (let i = 13; i >= 0; i--) {
@@ -686,132 +703,67 @@
       const y = d.getFullYear();
       const m = String(d.getMonth() + 1).padStart(2, '0');
       const day = String(d.getDate()).padStart(2, '0');
-      dates.push({
-        key: `${y}-${m}-${day}`,
-        label: `${d.getMonth() + 1}/${d.getDate()}`
-      });
+      dates.push({ key: `${y}-${m}-${day}`, label: `${d.getMonth() + 1}/${d.getDate()}` });
     }
 
-    // データ抽出
-    let globalMax = 0;
-    let periodSumAll = 0;
-    let periodCountAll = 0;
-
+    let globalMax = 0, periodSumAll = 0, periodCountAll = 0;
     const chartData = dates.map(d => {
       const list = dbData[d.key];
       if (list && list.length > 0) {
         const max = Math.max(...list);
         const sum = list.reduce((a, b) => a + b, 0);
-        const avg = sum / list.length;
-
         if (max > globalMax) globalMax = max;
         periodSumAll += sum;
         periodCountAll += list.length;
-
-        return { max, avg, hasData: true, label: d.label };
+        return { max, avg: sum / list.length, hasData: true, label: d.label };
       }
       return { max: 0, avg: 0, hasData: false, label: d.label };
     });
 
-    // 期間集計値の更新
     document.getElementById("stat-period-max").innerHTML = `${globalMax}<span class="unit">回</span>`;
-    const periodAvg = periodCountAll > 0 ? (periodSumAll / periodCountAll).toFixed(1) : 0;
-    document.getElementById("stat-period-avg").innerHTML = `${periodAvg}<span class="unit">回</span>`;
+    document.getElementById("stat-period-avg").innerHTML = `${(periodCountAll > 0 ? (periodSumAll / periodCountAll) : 0).toFixed(1)}<span class="unit">回</span>`;
 
-    // 描画マージン
-    const paddingLeft = 60;
-    const paddingRight = 30;
-    const paddingTop = 40;
-    const paddingBottom = 60;
-
+    const paddingLeft = 60, paddingRight = 30, paddingTop = 40, paddingBottom = 60;
     const graphW = width - paddingLeft - paddingRight;
     const graphH = height - paddingTop - paddingBottom;
-
-    // Y軸最大値（最低10、少し余裕をもたせる）
     const yMax = Math.max(10, Math.ceil((globalMax * 1.15) / 10) * 10);
 
-    // 背景の目盛り線
-    ctx.strokeStyle = "#e0e0e0";
-    ctx.lineWidth = 1.5;
-    ctx.fillStyle = "#666";
-    ctx.font = "20px sans-serif";
-    ctx.textAlign = "right";
-
-    const ySteps = 4;
-    for (let i = 0; i <= ySteps; i++) {
-      const val = Math.round((yMax / ySteps) * i);
-      const y = height - paddingBottom - (graphH / ySteps) * i;
-      
-      ctx.beginPath();
-      ctx.moveTo(paddingLeft, y);
-      ctx.lineTo(width - paddingRight, y);
-      ctx.stroke();
-
-      ctx.fillText(val, paddingLeft - 10, y + 6);
+    ctx.strokeStyle = "#e0e0e0"; ctx.lineWidth = 1.5; ctx.fillStyle = "#666"; ctx.font = "20px sans-serif"; ctx.textAlign = "right";
+    for (let i = 0; i <= 4; i++) {
+      const y = height - paddingBottom - (graphH / 4) * i;
+      ctx.beginPath(); ctx.moveTo(paddingLeft, y); ctx.lineTo(width - paddingRight, y); ctx.stroke();
+      ctx.fillText(Math.round((yMax / 4) * i), paddingLeft - 10, y + 6);
     }
 
-    // X軸（日付ラベル）
     const stepX = graphW / (dates.length - 1);
     ctx.textAlign = "center";
-    
-    // 隔日で日付テキスト描画
     dates.forEach((d, idx) => {
-      const x = paddingLeft + idx * stepX;
-      if (idx % 2 === 1 || idx === dates.length - 1) {
-        ctx.fillText(d.label, x, height - paddingBottom + 30);
-      }
+      if (idx % 2 === 1 || idx === dates.length - 1) ctx.fillText(d.label, paddingLeft + idx * stepX, height - paddingBottom + 30);
     });
 
-    // 座標計算関数
     const getX = (idx) => paddingLeft + idx * stepX;
     const getY = (val) => height - paddingBottom - (val / yMax) * graphH;
 
-    // 1. 平均回数プロット (青ライン & 白抜き円)
     drawLineAndPoints(ctx, chartData, getX, getY, 'avg', '#0288d1', false);
-
-    // 2. 最高記録プロット (オレンジライン & 塗りつぶし円)
     drawLineAndPoints(ctx, chartData, getX, getY, 'max', '#e65100', true);
   }
 
-  // グラフ線と点の描画ヘルパー
   function drawLineAndPoints(ctx, data, getX, getY, key, color, isSolid) {
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-
+    ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.beginPath();
     let isStarted = false;
     data.forEach((d, i) => {
       if (d.hasData) {
-        const x = getX(i);
-        const y = getY(d[key]);
-        if (!isStarted) {
-          ctx.moveTo(x, y);
-          isStarted = true;
-        } else {
-          ctx.lineTo(x, y);
-        }
+        const x = getX(i), y = getY(d[key]);
+        !isStarted ? (ctx.moveTo(x, y), isStarted = true) : ctx.lineTo(x, y);
       }
     });
     ctx.stroke();
 
-    // 点の描画
     data.forEach((d, i) => {
       if (d.hasData) {
-        const x = getX(i);
-        const y = getY(d[key]);
-
-        ctx.beginPath();
-        ctx.arc(x, y, 8, 0, Math.PI * 2);
-        if (isSolid) {
-          ctx.fillStyle = color;
-          ctx.fill();
-        } else {
-          ctx.fillStyle = "#ffffff";
-          ctx.fill();
-          ctx.strokeStyle = color;
-          ctx.lineWidth = 4;
-          ctx.stroke();
-        }
+        ctx.beginPath(); ctx.arc(getX(i), getY(d[key]), 8, 0, Math.PI * 2);
+        if (isSolid) { ctx.fillStyle = color; ctx.fill(); } 
+        else { ctx.fillStyle = "#ffffff"; ctx.fill(); ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.stroke(); }
       }
     });
   }
