@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>リフティング記録 v1.4</title>
+  <title>リフティング記録 v1.5</title>
   <style>
     /* 全体・サッカーフィールド背景 */
     :root {
@@ -170,7 +170,7 @@
       letter-spacing: 2px;
     }
 
-    /* テンキー */
+    /* モード1: テンキー */
     .keypad {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -204,6 +204,68 @@
       border-color: #ffcc80;
       border-bottom-color: #ffb74d;
       color: #e65100;
+    }
+
+    /* モード2: ボールタップカウントUI */
+    .tap-counter-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .ball-tap-btn {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 6px solid #333;
+      font-size: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+      transition: transform 0.05s, background-color 0.1s;
+      touch-action: manipulation;
+    }
+
+    .ball-tap-btn:active {
+      transform: scale(0.92);
+      background-color: #e8f5e9;
+    }
+
+    .counter-sub-actions {
+      display: flex;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .btn-count-down {
+      flex: 1;
+      padding: 10px;
+      background: #fff3e0;
+      border: 1px solid #ffe0b2;
+      border-radius: 8px;
+      color: #e65100;
+      font-size: 13px;
+      font-weight: bold;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .btn-count-reset {
+      flex: 1;
+      padding: 10px;
+      background: #f5f5f5;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      color: #666;
+      font-size: 13px;
+      font-weight: bold;
+      cursor: pointer;
+      touch-action: manipulation;
     }
 
     /* 記録追加・汎用ボタン */
@@ -270,6 +332,32 @@
       font-size: 12px;
       color: #555;
       word-break: break-all;
+    }
+
+    /* 設定エリアUI */
+    .setting-group {
+      background: #f9f9f9;
+      border: 1px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 16px;
+    }
+
+    .setting-label {
+      font-size: 14px;
+      font-weight: bold;
+      color: var(--pitch-dark);
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .radio-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 0;
+      font-size: 14px;
+      cursor: pointer;
     }
 
     /* 削除ボタン群 */
@@ -341,7 +429,7 @@
 <body>
 
 <div class="container">
-  <!-- タブ切り替え -->
+  <!-- タブナビゲーション -->
   <div class="tab-nav">
     <button class="tab-btn active" onclick="switchTab('record')">⚽ 記録</button>
     <button class="tab-btn" onclick="switchTab('graph')">📈 グラフ</button>
@@ -370,11 +458,13 @@
         </div>
       </div>
 
+      <!-- 入力数値ディスプレイ -->
       <div class="display-container">
         <div class="display-value" id="input-display">0</div>
       </div>
 
-      <div class="keypad">
+      <!-- モード1: テンキー入力 -->
+      <div id="input-mode-keypad" class="keypad">
         <button class="key-btn" onclick="pressKey('1')">1</button>
         <button class="key-btn" onclick="pressKey('2')">2</button>
         <button class="key-btn" onclick="pressKey('3')">3</button>
@@ -387,6 +477,15 @@
         <button class="key-btn action" onclick="pressKey('back')">←</button>
         <button class="key-btn" onclick="pressKey('0')">0</button>
         <button class="key-btn action" onclick="pressKey('clear')">C</button>
+      </div>
+
+      <!-- モード2: ボールタップカウント入力 -->
+      <div id="input-mode-tap" class="tap-counter-container" style="display: none;">
+        <div class="ball-tap-btn" onclick="tapCountUp()">⚽</div>
+        <div class="counter-sub-actions">
+          <button class="btn-count-down" onclick="tapCountDown()">1減らす (-1)</button>
+          <button class="btn-count-reset" onclick="tapCountReset()">クリア (C)</button>
+        </div>
       </div>
 
       <button class="btn-submit" onclick="addRecord()">
@@ -442,25 +541,41 @@
     </div>
   </div>
 
-  <!-- 3. 設定（データ管理）タブ -->
+  <!-- 3. 設定（データ管理・モード切り替え）タブ -->
   <div id="tab-settings" class="tab-content">
     <div class="card">
       <div class="history-title">
-        <span>⚙️ データ管理</span>
+        <span>⚙️ 設定・データ管理</span>
       </div>
-      <p style="font-size: 13px; color: #555; margin-bottom: 20px; line-height: 1.5;">
-        記録データは現在このスマホのブラウザ内にのみ保存されています。<br>
-        機種変更時などに記録を引き継ぐには、一度エクスポート（保存）して、新しいスマホでインポート（復元）してください。
-      </p>
 
-      <button class="btn-submit" style="background: #4caf50; border-bottom-color: #388e3c; color: white;" onclick="exportData()">
-        📤 エクスポート (バックアップ保存)
-      </button>
+      <!-- 入力モード設定 -->
+      <div class="setting-group">
+        <span class="setting-label">🎮 入力モードの切り替え</span>
+        <label class="radio-option">
+          <input type="radio" name="input-mode" value="keypad" onchange="changeInputMode('keypad')">
+          <span>🔢 テンキー入力（まとめて数字を入力）</span>
+        </label>
+        <label class="radio-option">
+          <input type="radio" name="input-mode" value="tap" onchange="changeInputMode('tap')">
+          <span>⚽ ボールタップ（1回ずつ押してカウント）</span>
+        </label>
+      </div>
 
-      <button class="btn-submit" style="background: #2196f3; border-bottom-color: #1976d2; color: white;" onclick="document.getElementById('import-file').click()">
-        📥 インポート (データ復元)
-      </button>
-      <input type="file" id="import-file" style="display: none;" accept=".json" onchange="importData(event)">
+      <!-- バックアップ設定 -->
+      <div style="margin-top: 16px;">
+        <p style="font-size: 13px; color: #555; margin-bottom: 12px; line-height: 1.5;">
+          機種変更時などのデータ引継ぎ用：
+        </p>
+
+        <button class="btn-submit" style="background: #4caf50; border-bottom-color: #388e3c; color: white;" onclick="exportData()">
+          📤 エクスポート (バックアップ保存)
+        </button>
+
+        <button class="btn-submit" style="background: #2196f3; border-bottom-color: #1976d2; color: white;" onclick="document.getElementById('import-file').click()">
+          📥 インポート (データ復元)
+        </button>
+        <input type="file" id="import-file" style="display: none;" accept=".json" onchange="importData(event)">
+      </div>
 
       <div style="margin-top: 32px; border-top: 1px solid #ccc; padding-top: 16px;">
         <p style="font-size: 12px; color: #c62828; margin-bottom: 8px; font-weight: bold;">※危険な操作（取り消しできません）</p>
@@ -474,14 +589,19 @@
 
 <script>
   const STORAGE_KEY = "lifting-records-v2";
+  const MODE_STORAGE_KEY = "lifting-input-mode";
+  
   let dbData = {};
   let currentInputValue = "";
+  let currentMode = "keypad"; // keypad OR tap
 
   window.addEventListener("DOMContentLoaded", () => {
     loadData();
+    loadModeSetting();
     updateDateDisplay();
     renderTodayStats();
     renderHistoryList();
+    applyModeUI();
   });
 
   function getTodayKey() {
@@ -511,6 +631,45 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(dbData));
   }
 
+  /* --- 入力モード設定機能 --- */
+  function loadModeSetting() {
+    const savedMode = localStorage.getItem(MODE_STORAGE_KEY);
+    if (savedMode === "tap" || savedMode === "keypad") {
+      currentMode = savedMode;
+    }
+  }
+
+  function changeInputMode(mode) {
+    currentMode = mode;
+    localStorage.setItem(MODE_STORAGE_KEY, mode);
+    applyModeUI();
+  }
+
+  function applyModeUI() {
+    // ラジオボタンの状態更新
+    const radios = document.getElementsByName("input-mode");
+    radios.forEach(r => {
+      r.checked = (r.value === currentMode);
+    });
+
+    // 表示切り替え
+    const keypadEl = document.getElementById("input-mode-keypad");
+    const tapEl = document.getElementById("input-mode-tap");
+
+    if (currentMode === "tap") {
+      keypadEl.style.display = "none";
+      tapEl.style.display = "flex";
+    } else {
+      keypadEl.style.display = "grid";
+      tapEl.style.display = "none";
+    }
+    
+    // 入力エリアリセット
+    currentInputValue = "";
+    document.getElementById("input-display").textContent = "0";
+  }
+
+  /* --- テンキー操作 --- */
   function pressKey(key) {
     if (key === 'clear') {
       currentInputValue = "";
@@ -525,6 +684,31 @@
     document.getElementById("input-display").textContent = currentInputValue || "0";
   }
 
+  /* --- ボールタップカウント操作 --- */
+  function tapCountUp() {
+    let count = parseInt(currentInputValue, 10) || 0;
+    if (count < 99999) {
+      count++;
+      currentInputValue = String(count);
+      document.getElementById("input-display").textContent = currentInputValue;
+    }
+  }
+
+  function tapCountDown() {
+    let count = parseInt(currentInputValue, 10) || 0;
+    if (count > 0) {
+      count--;
+      currentInputValue = count === 0 ? "" : String(count);
+      document.getElementById("input-display").textContent = currentInputValue || "0";
+    }
+  }
+
+  function tapCountReset() {
+    currentInputValue = "";
+    document.getElementById("input-display").textContent = "0";
+  }
+
+  /* --- 記録追加 --- */
   function addRecord() {
     const val = parseInt(currentInputValue, 10);
     if (isNaN(val) || val <= 0) return;
@@ -678,7 +862,7 @@
       } catch (err) {
         alert("ファイルの読み込みに失敗しました。正しいバックアップファイルを選択してください。");
       }
-      event.target.value = ''; // 連続で同じファイルを読み込めるようにリセット
+      event.target.value = '';
     };
     reader.readAsText(file);
   }
