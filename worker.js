@@ -2,15 +2,20 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    if (url.pathname === "/api/test") {
+    // GET /api/records
+    if (request.method === "GET" && url.pathname === "/api/records") {
       try {
-        const result = await env.DB
-          .prepare("SELECT 1 AS ok")
-          .first();
+        const { results } = await env.DB
+          .prepare(`
+            SELECT id, record_date, count, created_at
+            FROM records
+            ORDER BY record_date DESC, id DESC
+          `)
+          .all();
 
         return Response.json({
           success: true,
-          database: result
+          records: results
         });
       } catch (error) {
         return Response.json(
@@ -23,6 +28,6 @@ export default {
       }
     }
 
-    return new Response("lifting-record Worker is running");
+    return env.ASSETS.fetch(request);
   }
 };
