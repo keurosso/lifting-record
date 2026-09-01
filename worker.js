@@ -28,6 +28,49 @@ export default {
       }
     }
 
+    // POST /api/records
+    if (request.method === "POST" && url.pathname === "/api/records") {
+      try {
+        const body = await request.json();
+
+        const recordDate = body.record_date;
+        const count = body.count;
+
+        if (!recordDate || !Number.isInteger(count) || count < 0) {
+          return Response.json(
+            {
+              success: false,
+              error: "record_date and count are required"
+            },
+            { status: 400 }
+          );
+        }
+
+        const result = await env.DB
+          .prepare(`
+            INSERT INTO records (record_date, count)
+            VALUES (?, ?)
+          `)
+          .bind(recordDate, count)
+          .run();
+
+        return Response.json({
+          success: true,
+          id: result.meta.last_row_id,
+          record_date: recordDate,
+          count: count
+        });
+      } catch (error) {
+        return Response.json(
+          {
+            success: false,
+            error: error.message
+          },
+          { status: 500 }
+        );
+      }
+    }
+
     return env.ASSETS.fetch(request);
   }
 };
