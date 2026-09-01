@@ -1,0 +1,11 @@
+{
+  "name": "lifting-record",
+  "compatibility_date": "2026-09-02",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "lifting-db",
+      "database_id": "66c7ba25-ff1d-471b-a3ce-470da0df4783"
+    }
+  ]
+}
