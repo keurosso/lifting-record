@@ -706,13 +706,11 @@
     const recordObj = { id: null, count: val };
     dbData[today].push(recordObj);
 
-    // 1. UIを即時更新
     currentInputValue = "";
     document.getElementById("input-display").textContent = "0";
     renderTodayStats();
     renderHistoryList();
 
-    // 2. バックグラウンドで POST 送信
     sendRecordInBackground(recordObj, today, val);
   }
 
@@ -814,13 +812,20 @@
     }
   }
 
-  function clearAllData() {
+  async function clearAllData() {
     if (confirm("これまでの全期間の記録を【すべて】消去しますか？\n※この操作は取り消せません。")) {
-      dbData = {};
-      renderTodayStats();
-      renderHistoryList();
-      if (document.getElementById("tab-graph").classList.contains("active")) renderGraph();
-      alert("画面上の記録を表示リセットしました。");
+      try {
+        const res = await fetch("/api/records", { method: "DELETE" });
+        if (!res.ok) throw new Error("全削除に失敗しました");
+        dbData = {};
+        renderTodayStats();
+        renderHistoryList();
+        if (document.getElementById("tab-graph").classList.contains("active")) renderGraph();
+        alert("全記録を削除しました。");
+      } catch (e) {
+        console.error("全削除エラー:", e);
+        alert("データの削除に失敗しました。");
+      }
     }
   }
 
@@ -857,29 +862,117 @@
     URL.revokeObjectURL(url);
   }
 
+  // 旧localStorageデータ(JSON)をD1へインポート移行する機能
   function importData(event) {
     const file = event.target.files[0];
     if (!file) return;
+
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = async function(e) {
+      let importedData;
+
+      // 1. JSONを読み込んで解析
       try {
-        const importedData = JSON.parse(e.target.result);
-        if (typeof importedData === 'object' && importedData !== null && !Array.isArray(importedData)) {
-          if (confirm("現在の表示データが上書きされます。インポートを実行しますか？")) {
-            dbData = {};
-            Object.keys(importedData).forEach(k => {
-              if (Array.isArray(importedData[k])) {
-                dbData[k] = importedData[k].map(val => ({ id: null, count: Number(val) }));
-              }
+        importedData = JSON.parse(e.target.result);
+      } catch (err) {
+        alert("JSONファイルの解析に失敗しました。正しいJSON形式ではありません。");
+        event.target.value = '';
+        return;
+      }
+
+      // 2. データの構造チェック（検証）
+      const isValid = (
+        typeof importedData === 'object' &&
+        importedData !== null &&
+        !Array.isArray(importedData) &&
+        Object.keys(importedData).every(dateStr => {
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return false;
+          const list = importedData[dateStr];
+          if (!Array.isArray(list)) return false;
+          return list.every(val => Number.isInteger(val) && val >= 0);
+        })
+      );
+
+      if (!isValid) {
+        alert("JSONデータの形式が不正です。\nキーが YYYY-MM-DD 形式で、値が0以上の整数の配列であるか確認してください。");
+        event.target.value = '';
+        return;
+      }
+
+      // 3. ユーザーへ削除・上書きの確認ダイアログ表示
+      if (!confirm("D1に保存されている現在の記録をすべて削除し、インポートしたデータで上書きします。よろしいですか？")) {
+        event.target.value = '';
+        return;
+      }
+
+      // 4. D1の既存データを全削除する (DELETE /api/records)
+      try {
+        const deleteRes = await fetch("/api/records", { method: "DELETE" });
+        if (!deleteRes.ok) throw new Error("既存データの全削除に失敗しました。");
+      } catch (err) {
+        console.error("インポート前の全削除エラー:", err);
+        alert("D1の既存記録の全削除に失敗したため、インポートを中止しました。");
+        event.target.value = '';
+        return;
+      }
+
+      // 5. インポートデータを順次 POST 通信で登録
+      let successCount = 0;
+      let failedDate = null;
+      let failedCount = null;
+      let hasError = false;
+
+      const dates = Object.keys(importedData);
+      for (const dateStr of dates) {
+        const list = importedData[dateStr];
+        for (const countVal of list) {
+          try {
+            const postRes = await fetch("/api/records", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                record_date: dateStr,
+                count: countVal
+              })
             });
-            renderTodayStats();
-            renderHistoryList();
-            alert("データの読み込みが完了しました。");
+
+            if (!postRes.ok) {
+              throw new Error(`HTTP error: ${postRes.status}`);
+            }
+
+            const postData = await postRes.json();
+            if (postData.success === false) {
+              throw new Error("API処理エラー");
+            }
+
+            successCount++;
+          } catch (err) {
+            console.error(`登録エラー (${dateStr} / ${countVal}回):`, err);
+            hasError = true;
+            failedDate = dateStr;
+            failedCount = countVal;
+            break; // エラー発生時点で処理を中止
           }
-        } else { alert("ファイル形式が正しくありません。"); }
-      } catch (err) { alert("ファイルの読み込みに失敗しました。"); }
+        }
+        if (hasError) break;
+      }
+
+      // 6. 結果の処理
+      if (hasError) {
+        alert(`インポート失敗\n成功: ${successCount}件\n失敗: 1件\n${failedDate} / ${failedCount}回`);
+      } else {
+        alert(`インポートが成功しました！（全 ${successCount}件）`);
+      }
+
+      // 成功時も一部登録後の中止時も、現在のD1の状態に合わせて画面を更新
+      await loadData();
+      if (document.getElementById("tab-graph").classList.contains("active")) {
+        renderGraph();
+      }
+
       event.target.value = '';
     };
+
     reader.readAsText(file);
   }
 
