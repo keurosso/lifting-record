@@ -542,9 +542,9 @@
 </div>
 
 <script>
-  const STORAGE_KEY = "lifting-records-v2";
   const MODE_STORAGE_KEY = "lifting-input-mode";
 
+  // dbData 構造: { "YYYY-MM-DD": [ { id: number|null, count: number }, ... ] }
   let dbData = {};
   let currentInputValue = "";
   let currentMode = "keypad";
@@ -555,13 +555,11 @@
   const img1 = new Image(); img1.src = "tap1.png";
   const img2 = new Image(); img2.src = "tap2.png";
 
-  window.addEventListener("DOMContentLoaded", () => {
-    loadData();
-    loadModeSetting();
+  window.addEventListener("DOMContentLoaded", async () => {
     updateDateDisplay();
-    renderTodayStats();
-    renderHistoryList();
+    loadModeSetting();
     applyModeUI();
+    await loadData();
   });
 
   function getTodayKey() {
@@ -575,46 +573,71 @@
     document.getElementById("current-date-str").textContent = `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} (${dayNames[d.getDay()]})`;
   }
 
-  function loadData() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      dbData = raw ? JSON.parse(raw) : {};
-    } catch (e) {
-      dbData = {};
-    }
+  // 内部要素から数値のみの配列を取り出すヘルパー
+  function getCounts(list) {
+    if (!list) return [];
+    return list.map(item => (typeof item === 'object' && item !== null) ? item.count : Number(item));
   }
 
-  // 記録の保存（Cloudflare Worker API へ送信）
-  async function saveData() {
-    const today = getTodayKey();
-    const list = dbData[today] || [];
-    const countVal = list.length > 0 ? list[list.length - 1] : 0;
-
+  // D1 から記録を取得（Read）
+  async function loadData() {
     try {
-      const response = await fetch("/api/records", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          record_date: today,
-          count: countVal
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      const res = await fetch("/api/records");
+      if (!res.ok) throw new Error("データの取得に失敗しました");
+      const data = await res.json();
+      
+      dbData = {};
+      if (data.success && Array.isArray(data.records)) {
+        // id 順（昇順）にソートして保持
+        const sorted = data.records.sort((a, b) => a.id - b.id);
+        sorted.forEach(rec => {
+          if (!dbData[rec.record_date]) {
+            dbData[rec.record_date] = [];
+          }
+          dbData[rec.record_date].push({
+            id: rec.id,
+            count: Number(rec.count)
+          });
+        });
       }
-
-      const resJson = await response.json();
-      if (!resJson || resJson.success === false) {
-        throw new Error("保存処理に失敗しました。");
-      }
-    } catch (error) {
-      console.error("保存失敗:", error);
-      alert("保存に失敗しました");
-      throw error;
+    } catch (e) {
+      console.error("loadData error:", e);
+      dbData = {};
     }
+    renderTodayStats();
+    renderHistoryList();
+  }
+
+  // バックグラウンドでの POST 送信（即時 -> 1s -> 2s -> 5s リトライ）
+  async function sendRecordInBackground(recordObj, dateStr, countVal) {
+    const delays = [0, 1000, 2000, 5000];
+    for (let i = 0; i < delays.length; i++) {
+      if (delays[i] > 0) {
+        await new Promise(resolve => setTimeout(resolve, delays[i]));
+      }
+      try {
+        const res = await fetch("/api/records", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            record_date: dateStr,
+            count: countVal
+          })
+        });
+        if (res.ok) {
+          const resData = await res.json();
+          if (resData.success && resData.record) {
+            recordObj.id = resData.record.id;
+          } else if (resData.id) {
+            recordObj.id = resData.id;
+          }
+          return; // 成功したため終了
+        }
+      } catch (e) {
+        console.warn(`POST Attempt ${i + 1} failed:`, e);
+      }
+    }
+    console.error("全リトライ失敗: 記録のPOSTに失敗しました");
   }
 
   function loadModeSetting() {
@@ -672,33 +695,30 @@
     document.getElementById("lifting-img").src = "tap1.png";
   }
 
-  async function addRecord() {
+  // 記録の追加 (Create)
+  function addRecord() {
     const val = parseInt(currentInputValue, 10);
     if (isNaN(val) || val <= 0) return;
 
     const today = getTodayKey();
     if (!dbData[today]) dbData[today] = [];
-    dbData[today].push(val);
 
-    try {
-      await saveData();
-    } catch (e) {
-      // エラー発生時は追加した配列要素を取り消す
-      dbData[today].pop();
-      if (dbData[today].length === 0) delete dbData[today];
-      return;
-    }
+    const recordObj = { id: null, count: val };
+    dbData[today].push(recordObj);
 
+    // 1. UIを即時更新
     currentInputValue = "";
     document.getElementById("input-display").textContent = "0";
-
     renderTodayStats();
     renderHistoryList();
+
+    // 2. バックグラウンドで POST 送信
+    sendRecordInBackground(recordObj, today, val);
   }
 
   function renderTodayStats() {
     const today = getTodayKey();
-    const list = dbData[today] || [];
+    const list = getCounts(dbData[today]);
 
     if (list.length === 0) {
       document.getElementById("stat-today-max").innerHTML = `0<span class="unit">回</span>`;
@@ -722,14 +742,13 @@
     const todayKey = getTodayKey();
     const keys = Object.keys(dbData).sort().reverse();
 
-    if (keys.length === 0) {
-      container.innerHTML = `<div style="text-align:center; color:#888; font-size:13px; padding:12px;">まだ記録がありません</div>`;
-      return;
-    }
+    let hasData = false;
 
     keys.forEach(key => {
-      const list = dbData[key];
+      const list = getCounts(dbData[key]);
       if (!list || list.length === 0) return;
+      hasData = true;
+
       const sum = list.reduce((a, b) => a + b, 0);
       const max = Math.max(...list);
       const avg = (sum / list.length).toFixed(1);
@@ -749,16 +768,46 @@
       `;
       container.appendChild(item);
     });
+
+    if (!hasData) {
+      container.innerHTML = `<div style="text-align:center; color:#888; font-size:13px; padding:12px;">まだ記録がありません</div>`;
+    }
   }
 
-  function deleteLastRecord() {
+  // 1件削除 (Delete)
+  async function deleteLastRecord() {
     const today = getTodayKey();
-    if (dbData[today] && dbData[today].length > 0) {
+    const list = dbData[today];
+
+    if (list && list.length > 0) {
+      const targetItem = list[list.length - 1];
+      const targetId = (typeof targetItem === 'object' && targetItem !== null) ? targetItem.id : null;
+
+      if (!targetId) {
+        alert("削除対象のレコードIDがまだ特定できていないため、削除できません。");
+        return;
+      }
+
       if (confirm("今日入力した一番最後の記録を削除しますか？")) {
-        dbData[today].pop();
-        if (dbData[today].length === 0) delete dbData[today];
-        renderTodayStats();
-        renderHistoryList();
+        try {
+          const res = await fetch(`/api/records/${targetId}`, {
+            method: "DELETE"
+          });
+          if (!res.ok) throw new Error("DELETE に失敗しました");
+          
+          const resJson = await res.json().catch(() => ({}));
+          if (resJson.success === false) throw new Error("DELETE 処理エラー");
+
+          // API 成功時のみ UI 上のデータから削除
+          list.pop();
+          if (list.length === 0) delete dbData[today];
+
+          renderTodayStats();
+          renderHistoryList();
+        } catch (e) {
+          console.error("削除エラー:", e);
+          alert("記録の削除に失敗しました。");
+        }
       }
     } else {
       alert("削除できる今日の記録がありません。");
@@ -771,7 +820,7 @@
       renderTodayStats();
       renderHistoryList();
       if (document.getElementById("tab-graph").classList.contains("active")) renderGraph();
-      alert("全てのデータを消去しました。");
+      alert("画面上の記録を表示リセットしました。");
     }
   }
 
@@ -790,8 +839,16 @@
   }
 
   function exportData() {
-    if (Object.keys(dbData).length === 0) return alert("エクスポートする記録がありません。");
-    const blob = new Blob([JSON.stringify(dbData)], { type: "application/json" });
+    const keys = Object.keys(dbData);
+    if (keys.length === 0) return alert("エクスポートする記録がありません。");
+    
+    // エクスポート用データ生成（数値の配列に正規化）
+    const exportObj = {};
+    keys.forEach(k => {
+      exportObj[k] = getCounts(dbData[k]);
+    });
+
+    const blob = new Blob([JSON.stringify(exportObj)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -808,11 +865,16 @@
       try {
         const importedData = JSON.parse(e.target.result);
         if (typeof importedData === 'object' && importedData !== null && !Array.isArray(importedData)) {
-          if (confirm("現在のデータが上書きされます。インポートを実行しますか？")) {
-            dbData = importedData;
+          if (confirm("現在の表示データが上書きされます。インポートを実行しますか？")) {
+            dbData = {};
+            Object.keys(importedData).forEach(k => {
+              if (Array.isArray(importedData[k])) {
+                dbData[k] = importedData[k].map(val => ({ id: null, count: Number(val) }));
+              }
+            });
             renderTodayStats();
             renderHistoryList();
-            alert("データの復元が完了しました。");
+            alert("データの読み込みが完了しました。");
           }
         } else { alert("ファイル形式が正しくありません。"); }
       } catch (err) { alert("ファイルの読み込みに失敗しました。"); }
@@ -836,7 +898,7 @@
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       labels.push(`${d.getMonth() + 1}/${d.getDate()}`);
 
-      const list = dbData[key];
+      const list = getCounts(dbData[key]);
       if (list && list.length > 0) {
         const max = Math.max(...list);
         const sum = list.reduce((a, b) => a + b, 0);
@@ -904,8 +966,7 @@
           }
         }
       }
-    }
-    );
+    });
   }
 </script>
 </body>
