@@ -71,6 +71,27 @@ export default {
       }
     }
 
+    // DELETE /api/records (全件削除)
+    if (request.method === "DELETE" && url.pathname === "/api/records") {
+      try {
+        await env.DB
+          .prepare(`DELETE FROM records`)
+          .run();
+
+        return Response.json({
+          success: true
+        });
+      } catch (error) {
+        return Response.json(
+          {
+            success: false,
+            error: error.message
+          },
+          { status: 500 }
+        );
+      }
+    }
+
     return env.ASSETS.fetch(request);
   }
 };
