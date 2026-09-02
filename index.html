@@ -706,16 +706,14 @@
     const recordObj = { id: null, count: val };
     dbData[today].push(recordObj);
 
-    // 1. UIを即時更新（メインスレッドの処理を完結させる）
+    // 1. UIを即時更新
     currentInputValue = "";
     document.getElementById("input-display").textContent = "0";
     renderTodayStats();
     renderHistoryList();
 
-    // 2. setTimeout(..., 0) により、送信処理を次のイベントループに繰り延べてUIの応答性を優先
-    setTimeout(() => {
-      sendRecordInBackground(recordObj, today, val);
-    }, 0);
+    // 2. バックグラウンドで POST 送信
+    sendRecordInBackground(recordObj, today, val);
   }
 
   function renderTodayStats() {
