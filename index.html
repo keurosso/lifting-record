@@ -127,7 +127,6 @@
     .stat-box.highlight {
       background: #fffde7;
       border-color: #ffe082;
-      grid-column: span 2;
     }
 
     .stat-label {
@@ -420,10 +419,6 @@
           <div class="stat-label">今日の合計</div>
           <div class="stat-value" id="stat-today-sum">0<span class="unit">回</span></div>
         </div>
-        <div class="stat-box">
-          <div class="stat-label">今日の平均</div>
-          <div class="stat-value" id="stat-today-avg">0<span class="unit">回</span></div>
-        </div>
       </div>
 
       <!-- 入力数値ディスプレイ -->
@@ -486,7 +481,7 @@
       </div>
 
       <div class="stats-grid">
-        <div class="stat-box highlight">
+        <div class="stat-box highlight" style="grid-column: span 2;">
           <div class="stat-label">14日間の最高記録</div>
           <div class="stat-value" id="stat-period-max">0<span class="unit">回</span></div>
         </div>
@@ -726,17 +721,14 @@
     if (list.length === 0) {
       document.getElementById("stat-today-max").innerHTML = `0<span class="unit">回</span>`;
       document.getElementById("stat-today-sum").innerHTML = `0<span class="unit">回</span>`;
-      document.getElementById("stat-today-avg").innerHTML = `0<span class="unit">回</span>`;
       return;
     }
 
     const sum = list.reduce((a, b) => a + b, 0);
     const max = Math.max(...list);
-    const avg = (sum / list.length).toFixed(1);
 
     document.getElementById("stat-today-max").innerHTML = `${max}<span class="unit">回</span>`;
     document.getElementById("stat-today-sum").innerHTML = `${sum}<span class="unit">回</span>`;
-    document.getElementById("stat-today-avg").innerHTML = `${avg}<span class="unit">回</span>`;
   }
 
   function renderHistoryList() {
