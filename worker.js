@@ -92,6 +92,55 @@ export default {
       }
     }
 
+    // DELETE /api/records/:id (1件削除)
+    if (request.method === "DELETE" && url.pathname.startsWith("/api/records/")) {
+      try {
+        const idStr = url.pathname.replace("/api/records/", "");
+        const id = Number(idStr);
+
+        // idが整数でない場合は 400 エラー
+        if (!Number.isInteger(id) || idStr.trim() === "") {
+          return Response.json(
+            {
+              success: false,
+              error: "invalid id"
+            },
+            { status: 400 }
+          );
+        }
+
+        const result = await env.DB
+          .prepare(`
+            DELETE FROM records WHERE id = ?
+          `)
+          .bind(id)
+          .run();
+
+        // 削除対象のレコードが存在しなかった場合（変更件数が 0）は 404 エラー
+        if (result.meta.changes === 0) {
+          return Response.json(
+            {
+              success: false,
+              error: "record not found"
+            },
+            { status: 404 }
+          );
+        }
+
+        return Response.json({
+          success: true
+        });
+      } catch (error) {
+        return Response.json(
+          {
+            success: false,
+            error: error.message
+          },
+          { status: 500 }
+        );
+      }
+    }
+
     return env.ASSETS.fetch(request);
   }
 };
