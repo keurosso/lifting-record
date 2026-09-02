@@ -544,7 +544,7 @@
 <script>
   const STORAGE_KEY = "lifting-records-v2";
   const MODE_STORAGE_KEY = "lifting-input-mode";
-  
+
   let dbData = {};
   let currentInputValue = "";
   let currentMode = "keypad";
@@ -584,8 +584,37 @@
     }
   }
 
-  function saveData() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(dbData));
+  // 記録の保存（Cloudflare Worker API へ送信）
+  async function saveData() {
+    const today = getTodayKey();
+    const list = dbData[today] || [];
+    const countVal = list.length > 0 ? list[list.length - 1] : 0;
+
+    try {
+      const response = await fetch("/api/records", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          record_date: today,
+          count: countVal
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const resJson = await response.json();
+      if (!resJson || resJson.success === false) {
+        throw new Error("保存処理に失敗しました。");
+      }
+    } catch (error) {
+      console.error("保存失敗:", error);
+      alert("保存に失敗しました");
+      throw error;
+    }
   }
 
   function loadModeSetting() {
@@ -620,7 +649,7 @@
       count++;
       currentInputValue = String(count);
       document.getElementById("input-display").textContent = currentInputValue;
-      
+
       const imgEl = document.getElementById("lifting-img");
       if (tapTimer) clearTimeout(tapTimer);
       imgEl.src = "tap2.png";
@@ -643,7 +672,7 @@
     document.getElementById("lifting-img").src = "tap1.png";
   }
 
-  function addRecord() {
+  async function addRecord() {
     const val = parseInt(currentInputValue, 10);
     if (isNaN(val) || val <= 0) return;
 
@@ -651,7 +680,15 @@
     if (!dbData[today]) dbData[today] = [];
     dbData[today].push(val);
 
-    saveData();
+    try {
+      await saveData();
+    } catch (e) {
+      // エラー発生時は追加した配列要素を取り消す
+      dbData[today].pop();
+      if (dbData[today].length === 0) delete dbData[today];
+      return;
+    }
+
     currentInputValue = "";
     document.getElementById("input-display").textContent = "0";
 
@@ -720,7 +757,6 @@
       if (confirm("今日入力した一番最後の記録を削除しますか？")) {
         dbData[today].pop();
         if (dbData[today].length === 0) delete dbData[today];
-        saveData();
         renderTodayStats();
         renderHistoryList();
       }
@@ -732,7 +768,6 @@
   function clearAllData() {
     if (confirm("これまでの全期間の記録を【すべて】消去しますか？\n※この操作は取り消せません。")) {
       dbData = {};
-      saveData();
       renderTodayStats();
       renderHistoryList();
       if (document.getElementById("tab-graph").classList.contains("active")) renderGraph();
@@ -745,7 +780,7 @@
     document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
 
     document.getElementById(`tab-${tabName}`).classList.add("active");
-    
+
     if (tabName === 'record') document.querySelectorAll(".tab-btn")[0].classList.add("active");
     if (tabName === 'graph') {
       document.querySelectorAll(".tab-btn")[1].classList.add("active");
@@ -775,7 +810,6 @@
         if (typeof importedData === 'object' && importedData !== null && !Array.isArray(importedData)) {
           if (confirm("現在のデータが上書きされます。インポートを実行しますか？")) {
             dbData = importedData;
-            saveData();
             renderTodayStats();
             renderHistoryList();
             alert("データの復元が完了しました。");
@@ -870,7 +904,8 @@
           }
         }
       }
-    });
+    }
+    );
   }
 </script>
 </body>
