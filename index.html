@@ -287,6 +287,11 @@
       margin-bottom: 8px;
     }
 
+    .btn-submit:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
     .history-title {
       font-weight: bold;
       margin: 16px 0 8px 0;
@@ -525,7 +530,7 @@
           📤 エクスポート (バックアップ保存)
         </button>
 
-        <button class="btn-submit" style="background: #2196f3; border-bottom-color: #1976d2; color: white;" onclick="document.getElementById('import-file').click()">
+        <button id="import-btn" class="btn-submit" style="background: #2196f3; border-bottom-color: #1976d2; color: white;" onclick="document.getElementById('import-file').click()">
           📥 インポート (データ復元)
         </button>
         <input type="file" id="import-file" style="display: none;" accept=".json" onchange="importData(event)">
@@ -867,6 +872,9 @@
     const file = event.target.files[0];
     if (!file) return;
 
+    const importBtn = document.getElementById('import-btn');
+    const originalBtnText = "📥 インポート (データ復元)";
+
     const reader = new FileReader();
     reader.onload = async function(e) {
       let importedData;
@@ -905,6 +913,15 @@
         return;
       }
 
+      // 総件数の算出
+      const dates = Object.keys(importedData);
+      let totalRecords = 0;
+      dates.forEach(d => totalRecords += importedData[d].length);
+
+      // UI進捗表示の準備（ボタン無効化 & テキスト変更）
+      importBtn.disabled = true;
+      importBtn.textContent = `インポート中... (0/${totalRecords}件)`;
+
       // 4. D1の既存データを全削除する (DELETE /api/records)
       try {
         const deleteRes = await fetch("/api/records", { method: "DELETE" });
@@ -912,17 +929,18 @@
       } catch (err) {
         console.error("インポート前の全削除エラー:", err);
         alert("D1の既存記録の全削除に失敗したため、インポートを中止しました。");
+        importBtn.disabled = false;
+        importBtn.textContent = originalBtnText;
         event.target.value = '';
         return;
       }
 
-      // 5. インポートデータを順次 POST 通信で登録
+      // 5. インポートデータを順次 POST 通信で登録し、進捗を更新
       let successCount = 0;
       let failedDate = null;
       let failedCount = null;
       let hasError = false;
 
-      const dates = Object.keys(importedData);
       for (const dateStr of dates) {
         const list = importedData[dateStr];
         for (const countVal of list) {
@@ -946,6 +964,7 @@
             }
 
             successCount++;
+            importBtn.textContent = `インポート中... (${successCount}/${totalRecords}件)`;
           } catch (err) {
             console.error(`登録エラー (${dateStr} / ${countVal}回):`, err);
             hasError = true;
@@ -963,6 +982,10 @@
       } else {
         alert(`インポートが成功しました！（全 ${successCount}件）`);
       }
+
+      // ボタン表示の復元
+      importBtn.disabled = false;
+      importBtn.textContent = originalBtnText;
 
       // 成功時も一部登録後の中止時も、現在のD1の状態に合わせて画面を更新
       await loadData();
