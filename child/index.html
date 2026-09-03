@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>リフティング成長ノート ⚽</title>
+  <!-- 親画面と同じ設定ファイルを読み込み -->
+  <script src="../config.js"></script>
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --text-main: #f8fafc;
+      --text-sub: #94a3b8;
+      --accent-gold: #fbbf24;
+      --accent-green: #22c55e;
+      --accent-blue: #38bdf8;
+      --accent-red: #f43f5e;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px 12px 32px 12px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 440px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* ヘッダー */
+    .app-header {
+      text-align: center;
+      padding: 8px 0;
+    }
+
+    .app-title {
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      color: var(--accent-blue);
+      text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    }
+
+    /* カード共通 */
+    .card {
+      background: var(--card-bg);
+      border: 2px solid var(--card-border);
+      border-radius: 20px;
+      padding: 18px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: bold;
+      color: var(--text-sub);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* 1. 自己ベストヒーローカード */
+    .card-best {
+      background: linear-gradient(135deg, #2d1b06 0%, #1e293b 70%);
+      border-color: #78350f;
+      text-align: center;
+      padding: 24px 18px;
+    }
+
+    .card-best::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(251,191,36,0.15) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .best-badge {
+      display: inline-block;
+      background: #78350f;
+      color: var(--accent-gold);
+      font-weight: 900;
+      font-size: 13px;
+      padding: 4px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--accent-gold);
+      margin-bottom: 8px;
+    }
+
+    .best-value {
+      font-size: 54px;
+      font-weight: 900;
+      color: var(--accent-gold);
+      line-height: 1.1;
+      text-shadow: 0 0 20px rgba(251,191,36,0.3);
+    }
+
+    .unit {
+      font-size: 20px;
+      font-weight: bold;
+      margin-left: 2px;
+      color: var(--text-main);
+    }
+
+    /* グリッドレイアウト（最新 & 比較） */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    /* 2. 今回の記録 */
+    .latest-value {
+      font-size: 36px;
+      font-weight: 900;
+      color: var(--accent-blue);
+      margin-top: 4px;
+    }
+
+    /* 3. 前回との比較 */
+    .compare-box {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .compare-details {
+      font-size: 12px;
+      color: var(--text-sub);
+      margin-top: 2px;
+    }
+
+    .compare-tag {
+      margin-top: 6px;
+      font-size: 18px;
+      font-weight: 900;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .compare-tag.up {
+      color: var(--accent-green);
+    }
+
+    .compare-tag.keep {
+      color: var(--accent-blue);
+    }
+
+    .compare-msg {
+      font-size: 11px;
+      font-weight: bold;
+      color: var(--accent-green);
+      margin-top: 2px;
+    }
+
+    /* 4. 次の壁（プログレスバー） */
+    .card-target {
+      background: linear-gradient(135deg, #0f291e 0%, #1e293b 80%);
+      border-color: #14532d;
+    }
+
+    .target-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 8px;
+    }
+
+    .target-value {
+      font-size: 28px;
+      font-weight: 900;
+      color: var(--accent-green);
+    }
+
+    .target-remain {
+      font-size: 14px;
+      font-weight: bold;
+      color: var(--accent-gold);
+      background: rgba(251, 191, 36, 0.1);
+      padding: 4px 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(251, 191, 36, 0.3);
+    }
+
+    .progress-bar-bg {
+      width: 100%;
+      height: 16px;
+      background: #0f172a;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--card-border);
+      position: relative;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #16a34a, #22c55e);
+      border-radius: 10px;
+      width: 0%;
+      transition: width 0.8s ease-out;
+    }
+
+    /* 5. 累計回数 */
+    .card-total {
+      text-align: center;
+    }
+
+    .total-value {
+      font-size: 38px;
+      font-weight: 900;
+      color: var(--text-main);
+      letter-spacing: 1px;
+    }
+
+    .total-subtext {
+      font-size: 12px;
+      color: var(--text-sub);
+      margin-top: 4px;
+    }
+
+    /* 空データ表示 */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-sub);
+    }
+
+    .empty-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header class="app-header">
+    <div class="app-title">⚡ LIFTING CHAMPION ⚡</div>
+  </header>
+
+  <main id="main-content">
+    <!-- JSで動的にレンダリング -->
+  </main>
+</div>
+
+<script>
+  // config.jsから外れ値しきい値を取得（未定義の場合は初期値500）
+  const THRESHOLD = typeof OUTLIER_THRESHOLD !== "undefined" ? OUTLIER_THRESHOLD : 500;
+
+  window.addEventListener("DOMContentLoaded", () => {
+    fetchAndRender();
+  });
+
+  async function fetchAndRender() {
+    const mainEl = document.getElementById("main-content");
+
+    try {
+      const res = await fetch("/api/records");
+      if (!res.ok) throw new Error("データ取得失敗");
+      const data = await res.json();
+
+      if (!data.success || !Array.isArray(data.records) || data.records.length === 0) {
+        renderEmpty(mainEl);
+        return;
+      }
+
+      // ID昇順（登録順）に整列
+      const records = data.records.sort((a, b) => a.id - b.id);
+      renderDashboard(mainEl, records);
+    } catch (e) {
+      console.error(e);
+      renderEmpty(mainEl);
+    }
+  }
+
+  function renderEmpty(container) {
+    container.innerHTML = `
+      <div class="card empty-state">
+        <div class="empty-icon">⚽</div>
+        <h3>まだ記録がありません</h3>
+        <p style="font-size: 13px; margin-top: 8px;">れんしゅうして、きろくを追加してもらおう！</p>
+      </div>
+    `;
+  }
+
+  function renderDashboard(container, records) {
+    // 全記録のカウント値配列
+    const allCounts = records.map(r => Number(r.count));
+
+    // 1. 累計回数（外れ値も含めた全データの合計）
+    const totalCount = allCounts.reduce((sum, c) => sum + c, 0);
+
+    // 外れ値を除外したリスト（自己ベスト・最新・比較・次の壁に使用）
+    const validCounts = allCounts.filter(c => c < THRESHOLD);
+
+    // 有効データが存在しない場合
+    if (validCounts.length === 0) {
+      container.innerHTML = `
+        <div class="card card-total">
+          <div class="card-title">⚽ 累計チャレンジ</div>
+          <div class="total-value">${totalCount.toLocaleString()}<span class="unit">回</span></div>
+          <div class="total-subtext">これまでに積み重ねた回数！</div>
+        </div>
+      `;
+      return;
+    }
+
+    // 2. 自己ベスト (外れ値除外の最高値)
+    const bestCount = Math.max(...validCounts);
+
+    // 3. 最新記録 & 4. 前回との比較
+    const latestCount = validCounts[validCounts.length - 1];
+    const hasPrevious = validCounts.length >= 2;
+    const prevCount = hasPrevious ? validCounts[validCounts.length - 2] : 0;
+    const diff = latestCount - prevCount;
+
+    // 5. 次の壁の計算
+    const nextTarget = calculateNextTarget(bestCount);
+    const remainTarget = Math.max(0, nextTarget - bestCount);
+    // 進捗率（前の節目からの割合ではなく0〜100%の達成度）
+    const progressPercent = Math.min(100, Math.floor((bestCount / nextTarget) * 100));
+
+    // UIレンダリング
+    container.innerHTML = `
+      <!-- 1. 自己ベスト -->
+      <div class="card card-best">
+        <div class="best-badge">🏆 じぶんベスト</div>
+        <div class="best-value">${bestCount.toLocaleString()}<span class="unit">回</span></div>
+      </div>
+
+      <!-- 2. 今回 & 3. 前回との比較 -->
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">🔥 今回</div>
+          <div class="latest-value">${latestCount.toLocaleString()}<span class="unit">回</span></div>
+        </div>
+
+        <div class="card compare-box">
+          <div class="card-title">📈 前回くらべ</div>
+          ${renderComparison(diff, prevCount, hasPrevious)}
+        </div>
+      </div>
+
+      <!-- 4. 次の壁 -->
+      <div class="card card-target">
+        <div class="target-header">
+          <div>
+            <div class="card-title">🎯 つぎのカタベ</div>
+            <div class="target-value">${nextTarget.toLocaleString()}<span class="unit">回</span></div>
+          </div>
+          <div class="target-remain">あと ${remainTarget.toLocaleString()} 回！</div>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" style="width: ${progressPercent}%;"></div>
+        </div>
+      </div>
+
+      <!-- 5. 累計回数 -->
+      <div class="card card-total">
+        <div class="card-title">⚽ 今までの積み重ね（累計）</div>
+        <div class="total-value">${totalCount.toLocaleString()}<span class="unit">回</span></div>
+        <div class="total-subtext">ボールをけった合計の数だよ！</div>
+      </div>
+    `;
+  }
+
+  // 比較ロジック（ポジティブフィードバック重視）
+  function renderComparison(diff, prevCount, hasPrevious) {
+    if (!hasPrevious) {
+      return `
+        <div class="compare-tag keep">ナイス挑戦！</div>
+        <div class="compare-details">ここからスタート！</div>
+      `;
+    }
+
+    if (diff > 0) {
+      return `
+        <div class="compare-tag up">+${diff} 回！</div>
+        <div class="compare-msg">✨ 前回 (${prevCount}回) よりアップ！</div>
+      `;
+    } else if (diff === 0) {
+      return `
+        <div class="compare-tag keep">キープ！</div>
+        <div class="compare-details">前回 (${prevCount}回) とおなじ！</div>
+      `;
+    } else {
+      // 減少時もネガティブ表現は使わない
+      return `
+        <div class="compare-tag keep">${diff} 回</div>
+        <div class="compare-details">前回: ${prevCount}回 / ナイスファイト！</div>
+      `;
+    }
+  }
+
+  // 次の壁（ターゲット目標値）算出ロジック
+  function calculateNextTarget(currentBest) {
+    const milestones = [
+      10, 20, 30, 50, 75, 100, 150, 200, 300, 500, 750, 1000, 1500, 2000, 3000, 5000, 10000
+    ];
+
+    for (let target of milestones) {
+      if (currentBest < target) {
+        return target;
+      }
+    }
+
+    // マイルストーンを超えた場合は500刻みで自動更新
+    return Math.ceil((currentBest + 1) / 500) * 500;
+  }
+</script>
+</body>
+</html>
