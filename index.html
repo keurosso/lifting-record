@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>リフティング記録 v2.0</title>
+  <!-- 設定ファイルの読み込み -->
+  <script src="config.js"></script>
   <!-- Chart.js (CDN) の読み込み -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
@@ -724,8 +726,12 @@
       return;
     }
 
+    // 合計: 全件対象
     const sum = list.reduce((a, b) => a + b, 0);
-    const max = Math.max(...list);
+
+    // 最高: 外れ値 (config.js の OUTLIER_THRESHOLD 以上) を除外して計算
+    const filteredList = list.filter(c => c < OUTLIER_THRESHOLD);
+    const max = filteredList.length > 0 ? Math.max(...filteredList) : 0;
 
     document.getElementById("stat-today-max").innerHTML = `${max}<span class="unit">回</span>`;
     document.getElementById("stat-today-sum").innerHTML = `${sum}<span class="unit">回</span>`;
@@ -744,9 +750,14 @@
       if (!list || list.length === 0) return;
       hasData = true;
 
+      // 合計: 全件対象
       const sum = list.reduce((a, b) => a + b, 0);
-      const max = Math.max(...list);
-      const avg = (sum / list.length).toFixed(1);
+
+      // 最高・平均: 外れ値 (config.js の OUTLIER_THRESHOLD 以上) を除外して計算
+      const filteredList = list.filter(c => c < OUTLIER_THRESHOLD);
+      const max = filteredList.length > 0 ? Math.max(...filteredList) : 0;
+      const avg = filteredList.length > 0 ? (filteredList.reduce((a, b) => a + b, 0) / filteredList.length).toFixed(1) : "0.0";
+
       let dateLabel = key === todayKey ? "今日" : `${parseInt(key.split("-")[1])}/${parseInt(key.split("-")[2])}`;
 
       const item = document.createElement("div");
@@ -757,7 +768,7 @@
           <span>最高: ${max}回</span>
         </div>
         <div class="history-item-details">
-          合計 ${sum}回 / 平均 ${avg}回 (${list.length}回挑戦)<br>
+          合計 ${sum}回 / 平均 ${avg}回 (${filteredList.length}回挑戦)<br>
           <span style="color:#777;">[ ${list.join(", ")} ]</span>
         </div>
       `;
@@ -998,7 +1009,7 @@
     const avgData = [];
 
     const now = new Date();
-    let globalMax = 0, periodSumAll = 0, periodCountAll = 0;
+    let globalMax = 0, periodSumAll = 0, periodCountFiltered = 0;
 
     for (let i = 13; i >= 0; i--) {
       const d = new Date(now);
@@ -1008,16 +1019,24 @@
 
       const list = getCounts(dbData[key]);
       if (list && list.length > 0) {
-        const max = Math.max(...list);
-        const sum = list.reduce((a, b) => a + b, 0);
-        const avg = parseFloat((sum / list.length).toFixed(1));
+        // 最高・平均は外れ値除外リストを使用
+        const filteredList = list.filter(c => c < OUTLIER_THRESHOLD);
 
-        if (max > globalMax) globalMax = max;
-        periodSumAll += sum;
-        periodCountAll += list.length;
+        if (filteredList.length > 0) {
+          const max = Math.max(...filteredList);
+          const sumFiltered = filteredList.reduce((a, b) => a + b, 0);
+          const avg = parseFloat((sumFiltered / filteredList.length).toFixed(1));
 
-        maxData.push(max);
-        avgData.push(avg);
+          if (max > globalMax) globalMax = max;
+          periodSumAll += sumFiltered;
+          periodCountFiltered += filteredList.length;
+
+          maxData.push(max);
+          avgData.push(avg);
+        } else {
+          maxData.push(null);
+          avgData.push(null);
+        }
       } else {
         maxData.push(null);
         avgData.push(null);
@@ -1025,7 +1044,7 @@
     }
 
     document.getElementById("stat-period-max").innerHTML = `${globalMax}<span class="unit">回</span>`;
-    document.getElementById("stat-period-avg").innerHTML = `${(periodCountAll > 0 ? (periodSumAll / periodCountAll) : 0).toFixed(1)}<span class="unit">回</span>`;
+    document.getElementById("stat-period-avg").innerHTML = `${(periodCountFiltered > 0 ? (periodSumAll / periodCountFiltered) : 0).toFixed(1)}<span class="unit">回</span>`;
 
     const ctx = document.getElementById("chartCanvas").getContext("2d");
 
